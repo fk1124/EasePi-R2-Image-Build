@@ -15,7 +15,7 @@ case "${BRANCH}" in
     current|edge|vendor|linux7) ;;
     *)
         echo "ERROR: unsupported BRANCH: ${BRANCH}"
-        echo "Usage: bash build.sh [current|edge|vendor|linux7] [forky|trixie|bookworm] [minimal|server|desktop]"
+        echo "Usage: bash build.sh [current|edge|vendor|linux7] [resolute|noble|jammy|forky|trixie|bookworm] [minimal|server|desktop]"
         exit 1
         ;;
 esac
@@ -26,10 +26,10 @@ if [ "${BRANCH}" = "linux7" ]; then
 fi
 
 case "${RELEASE}" in
-    forky|trixie|bookworm) ;;
+    resolute|noble|jammy|forky|trixie|bookworm) ;;
     *)
         echo "ERROR: unsupported RELEASE: ${RELEASE}"
-        echo "Usage: bash build.sh [current|edge|vendor|linux7] [forky|trixie|bookworm] [minimal|server|desktop]"
+        echo "Usage: bash build.sh [current|edge|vendor|linux7] [resolute|noble|jammy|forky|trixie|bookworm] [minimal|server|desktop]"
         exit 1
         ;;
 esac
@@ -38,7 +38,7 @@ case "${IMAGE_TYPE}" in
     minimal|server|desktop) ;;
     *)
         echo "ERROR: unsupported IMAGE_TYPE: ${IMAGE_TYPE}"
-        echo "Usage: bash build.sh [current|edge|vendor|linux7] [forky|trixie|bookworm] [minimal|server|desktop]"
+        echo "Usage: bash build.sh [current|edge|vendor|linux7] [resolute|noble|jammy|forky|trixie|bookworm] [minimal|server|desktop]"
         exit 1
         ;;
 esac

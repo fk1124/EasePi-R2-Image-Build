@@ -17,10 +17,14 @@ case "${DIST}" in
         COMPONENTS="main,contrib,non-free,non-free-firmware"
         MIRROR="${DEBIAN_MIRROR:-http://deb.debian.org/debian}"
         ;;
+    ubuntu)
+        COMPONENTS="main,restricted,universe,multiverse"
+        MIRROR="${UBUNTU_MIRROR:-http://ports.ubuntu.com/ubuntu-ports}"
+        ;;
     *) echo "ERROR: unsupported DIST: ${DIST}"; exit 1 ;;
 esac
 
-printf '\n[2/4] Create Debian %s arm64 rootfs\n' "${RELEASE}"
+printf '\n[2/4] Create %s %s arm64 rootfs\n' "${DIST}" "${RELEASE}"
 printf 'Rootfs directory: %s\n' "${ROOTFS_DIR}"
 
 ${SUDO} rm -rf "${ROOTFS_DIR}"

@@ -161,6 +161,8 @@ ff02::2 ip6-allrouters
 EOF_HOSTS
 
 ${SUDO} chroot "${ROOTFS_DIR}" /usr/bin/env \
+  DIST="${DIST}" \
+  RELEASE="${RELEASE}" \
   CREATE_USER="${CREATE_USER}" \
   IMAGE_USER="${IMAGE_USER}" \
   IMAGE_PASSWORD="${IMAGE_PASSWORD}" \
@@ -193,13 +195,13 @@ This image was built without a default normal user.
 No public default account or password is configured.
 
 To create a user during build, run:
-  CREATE_USER=yes IMAGE_USER=fk IMAGE_PASSWORD='your_password' bash build-bsp-image.sh debian trixie current minimal
+  CREATE_USER=yes IMAGE_USER=fk IMAGE_PASSWORD='your_password' bash build-bsp-image.sh ${DIST} ${RELEASE} ${BRANCH} minimal
 
 To set a root password during build, run:
-  ROOT_PASSWORD='your_root_password' bash build-bsp-image.sh debian trixie current minimal
+  ROOT_PASSWORD='your_root_password' bash build-bsp-image.sh ${DIST} ${RELEASE} ${BRANCH} minimal
 
 If you intentionally want no built-in login account, run:
-  LOCK_ROOT=yes bash build-bsp-image.sh debian trixie current minimal
+  LOCK_ROOT=yes bash build-bsp-image.sh ${DIST} ${RELEASE} ${BRANCH} minimal
 EOF_NO_LOGIN
 fi
 

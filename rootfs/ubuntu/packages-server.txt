@@ -1,0 +1,12 @@
+# Container / router / server extras
+lxc
+lxc-templates
+ipset
+wireguard-tools
+docker.io
+avahi-daemon
+smartmontools
+nvme-cli
+mmc-utils
+alsa-utils
+v4l-utils

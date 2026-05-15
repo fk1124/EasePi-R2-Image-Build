@@ -11,7 +11,7 @@ Usage:
 Systems:
   armbian        Native Armbian image, routed to build.sh
   debian         Debian BSP packed image, routed to build-bsp-image.sh
-  ubuntu         Reserved for Ubuntu BSP packed images
+  ubuntu         Ubuntu BSP packed image, routed to build-bsp-image.sh
 
 Kernel aliases:
   6.1 | vendor
@@ -62,17 +62,31 @@ normalize_kernel() {
 }
 
 assert_supported_target() {
-    case "${SYSTEM}:${RELEASE}:${KERNEL_PROFILE}" in
-        armbian:bookworm:vendor|armbian:bookworm:current|armbian:trixie:current|armbian:trixie:linux7|armbian:forky:linux7|debian:bookworm:vendor|debian:bookworm:current|debian:trixie:current|debian:trixie:linux7|debian:forky:linux7)
-            return 0
+    case "${SYSTEM}" in
+        armbian)
+            case "${RELEASE}:${KERNEL_PROFILE}" in
+                bookworm:vendor|bookworm:current|trixie:current|trixie:linux7|forky:linux7|jammy:vendor|jammy:current|noble:current|noble:linux7|resolute:linux7)
+                    return 0
+                    ;;
+            esac
             ;;
-        ubuntu:*)
-            not_ready "Ubuntu BSP images are reserved for jammy/noble/resolute."
+        debian)
+            case "${RELEASE}:${KERNEL_PROFILE}" in
+                bookworm:vendor|bookworm:current|trixie:current|trixie:linux7|forky:linux7)
+                    return 0
+                    ;;
+            esac
             ;;
-        *)
-            not_ready "${SYSTEM} ${RELEASE} ${KERNEL} ${IMAGE_TYPE}"
+        ubuntu)
+            case "${RELEASE}:${KERNEL_PROFILE}" in
+                jammy:vendor|jammy:current|noble:current|noble:linux7|resolute:linux7)
+                    return 0
+                    ;;
+            esac
             ;;
     esac
+
+    not_ready "${SYSTEM} ${RELEASE} ${KERNEL} ${IMAGE_TYPE}"
 }
 
 SYSTEM="${1:-}"
@@ -103,7 +117,7 @@ assert_supported_target
 case "${SYSTEM}" in
     armbian)
         case "${RELEASE}" in
-            bookworm|trixie|forky) ;;
+            bookworm|trixie|forky|jammy|noble|resolute) ;;
             *) not_ready "Armbian ${RELEASE} is not wired into build.sh yet." ;;
         esac
         exec bash "${REPO_DIR}/build.sh" "${KERNEL_PROFILE}" "${RELEASE}" "${IMAGE_TYPE}"
@@ -116,7 +130,11 @@ case "${SYSTEM}" in
         exec bash "${REPO_DIR}/build-bsp-image.sh" debian "${RELEASE}" "${KERNEL_PROFILE}" "${IMAGE_TYPE}"
         ;;
     ubuntu)
-        not_ready "Ubuntu BSP images are reserved for jammy/noble/resolute."
+        case "${RELEASE}" in
+            jammy|noble|resolute) ;;
+            *) not_ready "Ubuntu BSP ${RELEASE} is not wired into build-bsp-image.sh yet." ;;
+        esac
+        exec bash "${REPO_DIR}/build-bsp-image.sh" ubuntu "${RELEASE}" "${KERNEL_PROFILE}" "${IMAGE_TYPE}"
         ;;
     *)
         not_ready "system ${SYSTEM}"

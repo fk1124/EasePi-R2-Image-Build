@@ -1,13 +1,18 @@
 # Ubuntu Rootfs
 
-Reserved for Ubuntu BSP packed images.
+Ubuntu BSP packed images use `debootstrap` with the Ubuntu ports archive.
 
-Planned releases:
+Planned and wired releases:
 
 - `jammy`: Ubuntu 22.04 LTS
 - `noble`: Ubuntu 24.04 LTS
 - `resolute`: Ubuntu 26.04 LTS preview
 
-The adapter should mirror the Debian BSP flow where possible, but keep Ubuntu
-package lists, apt sources, desktop profiles, and first-boot policy isolated in
-this directory.
+Package profiles are intentionally separate from Debian:
+
+- `packages-minimal.txt`
+- `packages-server.txt`
+- `packages-desktop.txt`
+
+Keep Ubuntu package names, apt sources, desktop profiles, and first-boot policy
+isolated here so Debian BSP builds do not inherit Ubuntu-specific changes.

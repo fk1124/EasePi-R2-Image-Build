@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # ============================================================================
-#  EasePi-R2 Debian BSP image builder
+#  EasePi-R2 Debian / Ubuntu BSP image builder
 #
 #  Usage:
-#    bash build-bsp-image.sh debian [forky|trixie|bookworm] [current|edge|vendor|linux7] [minimal|server|desktop]
+#    bash build-bsp-image.sh <debian|ubuntu> <release> [current|edge|vendor|linux7] [minimal|server|desktop]
 #
 #  Examples:
 #    bash build-bsp-image.sh debian trixie current minimal
@@ -55,18 +55,24 @@ export CREATE_USER IMAGE_USER IMAGE_PASSWORD ROOT_PASSWORD LOCK_ROOT
 usage() {
     cat <<USAGE
 Usage:
-  bash build-bsp-image.sh debian [forky|trixie|bookworm] [current|edge|vendor|linux7] [minimal|server|desktop]
+  bash build-bsp-image.sh <debian|ubuntu> <release> [current|edge|vendor|linux7] [minimal|server|desktop]
 
 Debian releases:
   forky       Debian 14 preview
   trixie      Debian 13
   bookworm    Debian 12
 
+Ubuntu releases:
+  resolute    Ubuntu 26.04 LTS preview
+  noble       Ubuntu 24.04 LTS
+  jammy       Ubuntu 22.04 LTS
+
 Examples:
   bash build-bsp-image.sh debian trixie current minimal
   bash build-bsp-image.sh debian trixie linux7 minimal
   bash build-bsp-image.sh debian bookworm vendor server
   bash build-bsp-image.sh debian forky linux7 desktop
+  bash build-bsp-image.sh ubuntu noble current minimal
 
 Optional environment variables:
   ARMBIAN_BUILD_DIR=/path/to/armbian/build
@@ -95,12 +101,15 @@ case "${DIST}" in
     debian)
         case "${RELEASE}" in forky|trixie|bookworm) ;; *) echo "ERROR: Debian only supports forky/trixie/bookworm in this kit."; usage; exit 1 ;; esac
         ;;
+    ubuntu)
+        case "${RELEASE}" in resolute|noble|jammy) ;; *) echo "ERROR: Ubuntu only supports resolute/noble/jammy in this kit."; usage; exit 1 ;; esac
+        ;;
     -h|--help|help)
         usage; exit 0
         ;;
     *)
         echo "ERROR: unsupported DIST: ${DIST}"
-        echo "This kit now supports Debian BSP images only."
+        echo "This kit supports Debian and Ubuntu BSP images."
         usage
         exit 1
         ;;
@@ -164,7 +173,7 @@ export ROOTFS_NAME IMAGE_NAME BSP_NAME
 cd "${REPO_DIR}"
 
 printf '\n============================================\n'
-printf '  EasePi-R2 Debian BSP Image Build\n'
+printf '  EasePi-R2 BSP Image Build\n'
 printf '============================================\n'
 printf '  DIST        = %s\n' "${DIST}"
 printf '  RELEASE     = %s\n' "${RELEASE}"

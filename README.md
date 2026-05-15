@@ -5,9 +5,9 @@
 当前已经接入：
 
 - Armbian 原生镜像：复用 Armbian build 生成 U-Boot / Kernel / DTB / rootfs / 分区镜像
-- Debian BSP 打包镜像：复用 Armbian build 生成 BSP，本项目生成 rootfs 并打包成可刷写镜像
+- Debian / Ubuntu BSP 打包镜像：复用 Armbian build 生成 BSP，本项目生成 rootfs 并打包成可刷写镜像
 
-后续会按矩阵逐步接入 Ubuntu BSP、FNOS、Alpine Linux、Fedora、Arch Linux ARM、Kali ARM、OpenWrt。
+后续会按矩阵逐步接入 FNOS、Alpine Linux、Fedora、Arch Linux ARM、Kali ARM、OpenWrt。
 
 ## 基础环境要求
 
@@ -53,7 +53,7 @@ sudo apt install -y parted dosfstools e2fsprogs util-linux u-boot-tools
 └── EasePi-R2-Image-Build/          # 本仓库
     ├── build-image.sh              # 统一构建入口
     ├── build.sh                    # Armbian 原生镜像入口
-    ├── build-bsp-image.sh          # Debian BSP 打包镜像入口
+    ├── build-bsp-image.sh          # Debian / Ubuntu BSP 打包镜像入口
     ├── configs/                    # 项目矩阵与目标配置
     ├── rootfs/                     # 各系统 rootfs 配置
     ├── scripts/                    # BSP 构建阶段脚本
@@ -112,7 +112,7 @@ desktop
 | Armbian bookworm 6.1 minimal | 已接入 | `bash build-image.sh armbian bookworm 6.1 minimal` |
 | Armbian trixie 6.18 minimal | 已接入 | `bash build-image.sh armbian trixie 6.18 minimal` |
 | Debian trixie 6.18 minimal | 已接入 | `bash build-image.sh debian trixie 6.18 minimal` |
-| Ubuntu noble 6.18 minimal | 规划中 |  |
+| Ubuntu noble 6.18 minimal | 已接入 | `bash build-image.sh ubuntu noble 6.18 minimal` |
 
 ### 2. 完整项目矩阵
 
@@ -121,15 +121,15 @@ desktop
 | armbian | bookworm | Debian 12 | 6.1 | 6.18 | [6.1](#cmd-armbian-bookworm-61) / [6.18](#cmd-armbian-bookworm-618) |
 | armbian | trixie | Debian 13 | 6.18 | 7.0 | [6.18](#cmd-armbian-trixie-618) / [7.0](#cmd-armbian-trixie-70) |
 | armbian | forky | Debian 14 / 前瞻 | 7.0 | - | [7.0](#cmd-armbian-forky-70) |
-| armbian | jammy | Ubuntu 22.04 LTS | 6.1 | 6.18 |  |
-| armbian | noble | Ubuntu 24.04 LTS | 6.18 | 7.0 |  |
-| armbian | resolute | Ubuntu 26.04 LTS / 前瞻 | 7.0 | - |  |
+| armbian | jammy | Ubuntu 22.04 LTS | 6.1 | 6.18 | [6.1](#cmd-armbian-jammy-61) / [6.18](#cmd-armbian-jammy-618) |
+| armbian | noble | Ubuntu 24.04 LTS | 6.18 | 7.0 | [6.18](#cmd-armbian-noble-618) / [7.0](#cmd-armbian-noble-70) |
+| armbian | resolute | Ubuntu 26.04 LTS / 前瞻 | 7.0 | - | [7.0](#cmd-armbian-resolute-70) |
 | debian | bookworm | Debian 12 BSP 打包镜像 | 6.1 | 6.18 | [6.1](#cmd-debian-bookworm-61) / [6.18](#cmd-debian-bookworm-618) |
 | debian | trixie | Debian 13 BSP 打包镜像 | 6.18 | 7.0 | [6.18](#cmd-debian-trixie-618) / [7.0](#cmd-debian-trixie-70) |
 | debian | forky | Debian 14 BSP 打包镜像 / 前瞻 | 7.0 | - | [7.0](#cmd-debian-forky-70) |
-| ubuntu | jammy | Ubuntu 22.04 LTS BSP 打包镜像 | 6.1 | 6.18 |  |
-| ubuntu | noble | Ubuntu 24.04 LTS BSP 打包镜像 | 6.18 | 7.0 |  |
-| ubuntu | resolute | Ubuntu 26.04 LTS BSP 打包镜像 / 前瞻 | 7.0 | - |  |
+| ubuntu | jammy | Ubuntu 22.04 LTS BSP 打包镜像 | 6.1 | 6.18 | [6.1](#cmd-ubuntu-jammy-61) / [6.18](#cmd-ubuntu-jammy-618) |
+| ubuntu | noble | Ubuntu 24.04 LTS BSP 打包镜像 | 6.18 | 7.0 | [6.18](#cmd-ubuntu-noble-618) / [7.0](#cmd-ubuntu-noble-70) |
+| ubuntu | resolute | Ubuntu 26.04 LTS BSP 打包镜像 / 前瞻 | 7.0 | - | [7.0](#cmd-ubuntu-resolute-70) |
 | FNOS | stable | 飞牛OS | FN专用内核 | - |  |
 | Alpine Linux | stable | apk / 轻量 rootfs | 6.18 | - |  |
 | Fedora | latest | Fedora 44 | 6.18 | - |  |
@@ -146,91 +146,101 @@ desktop
 
 ##### armbian bookworm 6.1
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal | `bash build-image.sh armbian bookworm 6.1 minimal` |
-| server | `bash build-image.sh armbian bookworm 6.1 server` |
-| desktop | `bash build-image.sh armbian bookworm 6.1 desktop` |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh armbian bookworm 6.1 minimal` | ⭐⭐⭐⭐⭐ | 未验证 | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh armbian bookworm 6.1 server` | ⭐⭐⭐⭐ | 未验证 | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh armbian bookworm 6.1 desktop` | ⭐⭐⭐ | 未验证 | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
 
 <a id="cmd-armbian-bookworm-618"></a>
 
 ##### armbian bookworm 6.18
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal | `bash build-image.sh armbian bookworm 6.18 minimal` |
-| server | `bash build-image.sh armbian bookworm 6.18 server` |
-| desktop | `bash build-image.sh armbian bookworm 6.18 desktop` |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh armbian bookworm 6.18 minimal` | ⭐⭐⭐⭐ | 未验证 | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh armbian bookworm 6.18 server` | ⭐⭐⭐ | 未验证 | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh armbian bookworm 6.18 desktop` | ⭐⭐ | 未验证 | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
 
 <a id="cmd-armbian-trixie-618"></a>
 
 ##### armbian trixie 6.18
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal | `bash build-image.sh armbian trixie 6.18 minimal` |
-| server | `bash build-image.sh armbian trixie 6.18 server` |
-| desktop | `bash build-image.sh armbian trixie 6.18 desktop` |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh armbian trixie 6.18 minimal` | ⭐⭐⭐⭐⭐ | 未验证 | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh armbian trixie 6.18 server` | ⭐⭐⭐⭐ | 未验证 | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh armbian trixie 6.18 desktop` | ⭐⭐⭐ | 未验证 | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
 
 <a id="cmd-armbian-trixie-70"></a>
 
 ##### armbian trixie 7.0
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal | `bash build-image.sh armbian trixie 7.0 minimal` |
-| server | `bash build-image.sh armbian trixie 7.0 server` |
-| desktop | `bash build-image.sh armbian trixie 7.0 desktop` |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh armbian trixie 7.0 minimal` | ⭐⭐⭐ | 未验证 | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh armbian trixie 7.0 server` | ⭐⭐ | 未验证 | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh armbian trixie 7.0 desktop` | ⭐ | 未验证 | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
 
 <a id="cmd-armbian-forky-70"></a>
 
 ##### armbian forky 7.0
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal | `bash build-image.sh armbian forky 7.0 minimal` |
-| server | `bash build-image.sh armbian forky 7.0 server` |
-| desktop | `bash build-image.sh armbian forky 7.0 desktop` |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh armbian forky 7.0 minimal` | ⭐⭐ | 未验证 | 最小化前瞻镜像，适合内核/发行版适配验证 |
+| server | `bash build-image.sh armbian forky 7.0 server` | ⭐ | 未验证 | 前瞻服务器镜像，适合服务组件兼容性验证 |
+| desktop | `bash build-image.sh armbian forky 7.0 desktop` | ⭐ | 未验证 | 前瞻 XFCE 桌面，适合图形栈兼容性验证 |
+
+<a id="cmd-armbian-jammy-61"></a>
 
 ##### armbian jammy 6.1
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal |  |
-| server |  |
-| desktop |  |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh armbian jammy 6.1 minimal` | ⭐⭐⭐ | 未验证 | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh armbian jammy 6.1 server` | ⭐⭐ | 未验证 | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh armbian jammy 6.1 desktop` | ⭐ | 未验证 | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
+
+<a id="cmd-armbian-jammy-618"></a>
 
 ##### armbian jammy 6.18
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal |  |
-| server |  |
-| desktop |  |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh armbian jammy 6.18 minimal` | ⭐⭐⭐ | 未验证 | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh armbian jammy 6.18 server` | ⭐⭐ | 未验证 | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh armbian jammy 6.18 desktop` | ⭐ | 未验证 | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
+
+<a id="cmd-armbian-noble-618"></a>
 
 ##### armbian noble 6.18
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal |  |
-| server |  |
-| desktop |  |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh armbian noble 6.18 minimal` | ⭐⭐⭐⭐ | 未验证 | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh armbian noble 6.18 server` | ⭐⭐⭐ | 未验证 | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh armbian noble 6.18 desktop` | ⭐⭐ | 未验证 | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
+
+<a id="cmd-armbian-noble-70"></a>
 
 ##### armbian noble 7.0
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal |  |
-| server |  |
-| desktop |  |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh armbian noble 7.0 minimal` | ⭐⭐⭐ | 未验证 | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh armbian noble 7.0 server` | ⭐⭐ | 未验证 | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh armbian noble 7.0 desktop` | ⭐ | 未验证 | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
+
+<a id="cmd-armbian-resolute-70"></a>
 
 ##### armbian resolute 7.0
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal |  |
-| server |  |
-| desktop |  |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh armbian resolute 7.0 minimal` | ⭐⭐ | 未验证 | 最小化前瞻镜像，适合内核/发行版适配验证 |
+| server | `bash build-image.sh armbian resolute 7.0 server` | ⭐ | 未验证 | 前瞻服务器镜像，适合服务组件兼容性验证 |
+| desktop | `bash build-image.sh armbian resolute 7.0 desktop` | ⭐ | 未验证 | 前瞻 XFCE 桌面，适合图形栈兼容性验证 |
 
 #### Debian BSP 打包镜像
 
@@ -238,105 +248,115 @@ desktop
 
 ##### debian bookworm 6.1
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal | `bash build-image.sh debian bookworm 6.1 minimal` |
-| server | `bash build-image.sh debian bookworm 6.1 server` |
-| desktop | `bash build-image.sh debian bookworm 6.1 desktop` |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh debian bookworm 6.1 minimal` | ⭐⭐⭐⭐ | 未验证 | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh debian bookworm 6.1 server` | ⭐⭐⭐ | 未验证 | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh debian bookworm 6.1 desktop` | ⭐⭐ | 未验证 | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
 
 <a id="cmd-debian-bookworm-618"></a>
 
 ##### debian bookworm 6.18
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal | `bash build-image.sh debian bookworm 6.18 minimal` |
-| server | `bash build-image.sh debian bookworm 6.18 server` |
-| desktop | `bash build-image.sh debian bookworm 6.18 desktop` |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh debian bookworm 6.18 minimal` | ⭐⭐⭐ | 未验证 | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh debian bookworm 6.18 server` | ⭐⭐ | 未验证 | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh debian bookworm 6.18 desktop` | ⭐ | 未验证 | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
 
 <a id="cmd-debian-trixie-618"></a>
 
 ##### debian trixie 6.18
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal | `bash build-image.sh debian trixie 6.18 minimal` |
-| server | `bash build-image.sh debian trixie 6.18 server` |
-| desktop | `bash build-image.sh debian trixie 6.18 desktop` |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh debian trixie 6.18 minimal` | ⭐⭐⭐⭐⭐ | 未验证 | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh debian trixie 6.18 server` | ⭐⭐⭐⭐ | 未验证 | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh debian trixie 6.18 desktop` | ⭐⭐⭐ | 未验证 | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
 
 <a id="cmd-debian-trixie-70"></a>
 
 ##### debian trixie 7.0
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal | `bash build-image.sh debian trixie 7.0 minimal` |
-| server | `bash build-image.sh debian trixie 7.0 server` |
-| desktop | `bash build-image.sh debian trixie 7.0 desktop` |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh debian trixie 7.0 minimal` | ⭐⭐⭐ | 未验证 | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh debian trixie 7.0 server` | ⭐⭐ | 未验证 | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh debian trixie 7.0 desktop` | ⭐ | 未验证 | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
 
 <a id="cmd-debian-forky-70"></a>
 
 ##### debian forky 7.0
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal | `bash build-image.sh debian forky 7.0 minimal` |
-| server | `bash build-image.sh debian forky 7.0 server` |
-| desktop | `bash build-image.sh debian forky 7.0 desktop` |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh debian forky 7.0 minimal` | ⭐⭐ | 未验证 | 最小化前瞻镜像，适合内核/发行版适配验证 |
+| server | `bash build-image.sh debian forky 7.0 server` | ⭐ | 未验证 | 前瞻服务器镜像，适合服务组件兼容性验证 |
+| desktop | `bash build-image.sh debian forky 7.0 desktop` | ⭐ | 未验证 | 前瞻 XFCE 桌面，适合图形栈兼容性验证 |
 
 #### Ubuntu BSP 打包镜像
 
+<a id="cmd-ubuntu-jammy-61"></a>
+
 ##### ubuntu jammy 6.1
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal |  |
-| server |  |
-| desktop |  |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh ubuntu jammy 6.1 minimal` | ⭐⭐⭐ | 未验证 | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh ubuntu jammy 6.1 server` | ⭐⭐ | 未验证 | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh ubuntu jammy 6.1 desktop` | ⭐ | 未验证 | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
+
+<a id="cmd-ubuntu-jammy-618"></a>
 
 ##### ubuntu jammy 6.18
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal |  |
-| server |  |
-| desktop |  |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh ubuntu jammy 6.18 minimal` | ⭐⭐⭐ | 未验证 | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh ubuntu jammy 6.18 server` | ⭐⭐ | 未验证 | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh ubuntu jammy 6.18 desktop` | ⭐ | 未验证 | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
+
+<a id="cmd-ubuntu-noble-618"></a>
 
 ##### ubuntu noble 6.18
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal |  |
-| server |  |
-| desktop |  |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh ubuntu noble 6.18 minimal` | ⭐⭐⭐⭐⭐ | 未验证 | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh ubuntu noble 6.18 server` | ⭐⭐⭐⭐ | 未验证 | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh ubuntu noble 6.18 desktop` | ⭐⭐⭐ | 未验证 | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
+
+<a id="cmd-ubuntu-noble-70"></a>
 
 ##### ubuntu noble 7.0
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal |  |
-| server |  |
-| desktop |  |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh ubuntu noble 7.0 minimal` | ⭐⭐⭐ | 未验证 | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh ubuntu noble 7.0 server` | ⭐⭐ | 未验证 | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh ubuntu noble 7.0 desktop` | ⭐ | 未验证 | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
+
+<a id="cmd-ubuntu-resolute-70"></a>
 
 ##### ubuntu resolute 7.0
 
-| 类型 | 编译命令 |
-| --- | --- |
-| minimal |  |
-| server |  |
-| desktop |  |
+| 类型 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh ubuntu resolute 7.0 minimal` | ⭐⭐ | 未验证 | 最小化前瞻镜像，适合内核/发行版适配验证 |
+| server | `bash build-image.sh ubuntu resolute 7.0 server` | ⭐ | 未验证 | 前瞻服务器镜像，适合服务组件兼容性验证 |
+| desktop | `bash build-image.sh ubuntu resolute 7.0 desktop` | ⭐ | 未验证 | 前瞻 XFCE 桌面，适合图形栈兼容性验证 |
 
 #### 其他系统预留
 
-| 系统 | 发行版 | 内核 | 编译命令 |
-| --- | --- | --- | --- |
-| FNOS | stable | FN专用内核 |  |
-| Alpine Linux | stable | 6.18 |  |
-| Fedora | latest | 6.18 |  |
-| Arch Linux ARM | rolling | 6.18 |  |
-| Kali ARM | rolling | 6.18 |  |
-| OpenWrt | 24 | 6.6 |  |
-| OpenWrt | 25 | 6.12 |  |
+| 系统 | 发行版 | 内核 | 编译命令 | 推荐指数 | 是否验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- | --- | --- |
+| FNOS | stable | FN专用内核 |  |  | 未接入 | FNOS 路线预留 |
+| Alpine Linux | stable | 6.18 |  |  | 未接入 | 轻量 rootfs 路线预留 |
+| Fedora | latest | 6.18 |  |  | 未接入 | Fedora rootfs 路线预留 |
+| Arch Linux ARM | rolling | 6.18 |  |  | 未接入 | 滚动发行 rootfs 路线预留 |
+| Kali ARM | rolling | 6.18 |  |  | 未接入 | 安全测试 rootfs 路线预留 |
+| OpenWrt | 24 | 6.6 |  |  | 未接入 | OpenWrt 24 路线预留 |
+| OpenWrt | 25 | 6.12 |  |  | 未接入 | OpenWrt 25 路线预留 |
 
 ## 四、编译产物位置
 
@@ -346,7 +366,7 @@ Armbian 原生镜像产物：
 ~/rk3588_build/build/output/images/
 ```
 
-Debian BSP 打包镜像产物：
+Debian / Ubuntu BSP 打包镜像产物：
 
 ```bash
 ~/rk3588_build/EasePi-R2-Image-Build/output/images/
@@ -362,7 +382,7 @@ EasePi-R2-debian-trixie-current-minimal.img.xz.sha256
 
 ## 五、登录账户说明
 
-Debian BSP 打包镜像默认不创建公开固定账号。构建时需要设置 root 密码，脚本会在交互终端中提示输入两次。
+Debian / Ubuntu BSP 打包镜像默认不创建公开固定账号。构建时需要设置 root 密码，脚本会在交互终端中提示输入两次。
 
 也可以通过环境变量提前传入 root 密码：
 
@@ -411,7 +431,7 @@ eMMC / TF / USB / PCIe
 ```text
 build-image.sh                 统一入口，负责系统/发行版/内核/镜像类型路由
 build.sh                       Armbian 原生镜像适配层
-build-bsp-image.sh             Debian BSP 打包镜像适配层
+build-bsp-image.sh             Debian / Ubuntu BSP 打包镜像适配层
 configs/build-matrix.yaml      项目目标矩阵
 rootfs/<system>/               各系统 rootfs、软件源、包列表、镜像类型策略
 scripts/                       BSP 构建阶段脚本
@@ -439,6 +459,11 @@ output/bsp/debian-bookworm-current/
 output/bsp/debian-trixie-current/
 output/bsp/debian-trixie-linux7/
 output/bsp/debian-forky-linux7/
+output/bsp/ubuntu-jammy-vendor/
+output/bsp/ubuntu-jammy-current/
+output/bsp/ubuntu-noble-current/
+output/bsp/ubuntu-noble-linux7/
+output/bsp/ubuntu-resolute-linux7/
 ```
 
 如果已经有对应 BSP，脚本会优先复用，避免每次都重新编译内核。BSP 缓存按 `系统-发行版-内核` 隔离，避免不同发行版复用或覆盖同一组 BSP deb。

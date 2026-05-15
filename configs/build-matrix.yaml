@@ -50,8 +50,8 @@ targets:
     primary_kernel: "6.1"
     secondary_kernel: "6.18"
     kernels:
-      "6.1": reserved
-      "6.18": reserved
+      "6.1": implemented
+      "6.18": implemented
 
   - system: armbian
     release: noble
@@ -59,8 +59,8 @@ targets:
     primary_kernel: "6.18"
     secondary_kernel: "7.0"
     kernels:
-      "6.18": reserved
-      "7.0": reserved
+      "6.18": implemented
+      "7.0": implemented
 
   - system: armbian
     release: resolute
@@ -68,7 +68,7 @@ targets:
     primary_kernel: "7.0"
     secondary_kernel: null
     kernels:
-      "7.0": reserved
+      "7.0": implemented
 
   - system: debian
     release: bookworm
@@ -102,8 +102,8 @@ targets:
     primary_kernel: "6.1"
     secondary_kernel: "6.18"
     kernels:
-      "6.1": reserved
-      "6.18": reserved
+      "6.1": implemented
+      "6.18": implemented
 
   - system: ubuntu
     release: noble
@@ -111,8 +111,8 @@ targets:
     primary_kernel: "6.18"
     secondary_kernel: "7.0"
     kernels:
-      "6.18": reserved
-      "7.0": reserved
+      "6.18": implemented
+      "7.0": implemented
 
   - system: ubuntu
     release: resolute
@@ -120,7 +120,7 @@ targets:
     primary_kernel: "7.0"
     secondary_kernel: null
     kernels:
-      "7.0": reserved
+      "7.0": implemented
 
   - system: FNOS
     release: stable
