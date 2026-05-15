@@ -10,4 +10,6 @@
 *.yml text eol=lf
 *.service text eol=lf
 *.md text eol=lf
+*.txt text eol=lf
+*.list text eol=lf
 userpatches/overlay/**/usr/local/sbin/* text eol=lf
