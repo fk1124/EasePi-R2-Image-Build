@@ -78,18 +78,22 @@ ${SUDO} mount -t proc proc "${ROOTFS_DIR}/proc"
 ${SUDO} mount -t sysfs sysfs "${ROOTFS_DIR}/sys"
 
 write_minimal_package_list
-if [ "${IMAGE_TYPE}" = "server" ]; then
-    ${SUDO} cp "${REPO_DIR}/rootfs/${DIST}/packages-server.txt" "${ROOTFS_DIR}/tmp/packages-server.txt"
-else
-    ${SUDO} sh -c ": > '${ROOTFS_DIR}/tmp/packages-server.txt'"
-fi
+${SUDO} sh -c ": > '${ROOTFS_DIR}/tmp/packages-extra.txt'"
+case "${IMAGE_TYPE}" in
+    server)
+        ${SUDO} cp "${REPO_DIR}/rootfs/${DIST}/packages-server.txt" "${ROOTFS_DIR}/tmp/packages-extra.txt"
+        ;;
+    desktop)
+        ${SUDO} cp "${REPO_DIR}/rootfs/${DIST}/packages-desktop.txt" "${ROOTFS_DIR}/tmp/packages-extra.txt"
+        ;;
+esac
 
 ${SUDO} chroot "${ROOTFS_DIR}" /bin/bash -e <<'CHROOT'
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-cat /tmp/packages-minimal.txt /tmp/packages-server.txt | grep -vE '^\s*(#|$)' | xargs -r apt-get install -y --no-install-recommends
+cat /tmp/packages-minimal.txt /tmp/packages-extra.txt | grep -vE '^\s*(#|$)' | xargs -r apt-get install -y --no-install-recommends
 apt-get clean
-rm -rf /var/lib/apt/lists/* /tmp/packages-minimal.txt /tmp/packages-server.txt
+rm -rf /var/lib/apt/lists/* /tmp/packages-minimal.txt /tmp/packages-extra.txt
 CHROOT
 
 cleanup_mounts

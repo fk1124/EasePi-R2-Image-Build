@@ -5,12 +5,14 @@ REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 SUDO="${SUDO:-sudo}"
 
 BOARD="${BOARD:-easepi-r2}"
+DIST="${DIST:-debian}"
 BRANCH="${BRANCH:-current}"
 ARMBIAN_BRANCH="${ARMBIAN_BRANCH:-${BRANCH}}"
 RELEASE="${RELEASE:-trixie}"
 IMAGE_TYPE="${IMAGE_TYPE:-minimal}"
 FORCE_BSP_REBUILD="${FORCE_BSP_REBUILD:-no}"
 EASEPI_R2_KERNEL_PROFILE="${EASEPI_R2_KERNEL_PROFILE:-}"
+BSP_NAME="${BSP_NAME:-${DIST}-${RELEASE}-${BRANCH}}"
 
 if [ "${BRANCH}" = "linux7" ]; then
     ARMBIAN_BRANCH="edge"
@@ -51,7 +53,7 @@ ORAS_VERSION="${ORAS_VERSION:-1.3.1}"
 
 ARMBIAN_BUILD_REPO="${ARMBIAN_BUILD_REPO:-https://github.com/armbian/build.git}"
 
-BSP_DIR="${REPO_DIR}/output/bsp/${BRANCH}"
+BSP_DIR="${REPO_DIR}/output/bsp/${BSP_NAME}"
 mkdir -p "${BSP_DIR}"
 
 msg() {
@@ -407,6 +409,11 @@ trust_existing_git_caches() {
 
 calc_bsp_input_hash() {
     (
+        printf 'DIST=%s\n' "${DIST}"
+        printf 'RELEASE=%s\n' "${RELEASE}"
+        printf 'BRANCH=%s\n' "${BRANCH}"
+        printf 'ARMBIAN_BRANCH=%s\n' "${ARMBIAN_BRANCH}"
+        printf 'KERNEL_PROFILE=%s\n' "${EASEPI_R2_KERNEL_PROFILE:-default}"
         cd "${REPO_DIR}"
         find userpatches -type f -print0 2>/dev/null | sort -z | while IFS= read -r -d '' f; do
             sha256sum "$f"

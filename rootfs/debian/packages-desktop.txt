@@ -1,0 +1,20 @@
+# XFCE desktop profile
+xserver-xorg
+xinit
+lightdm
+lightdm-gtk-greeter
+dbus-x11
+xfce4
+xfce4-goodies
+xfce4-terminal
+gvfs
+udisks2
+upower
+fonts-noto-core
+fonts-noto-cjk
+fonts-noto-color-emoji
+pipewire
+wireplumber
+pipewire-pulse
+pavucontrol
+firefox-esr

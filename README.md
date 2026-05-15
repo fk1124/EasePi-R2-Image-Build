@@ -120,13 +120,13 @@ desktop
 | --- | --- | --- | --- | --- | --- |
 | armbian | bookworm | Debian 12 | 6.1 | 6.18 | [6.1](#cmd-armbian-bookworm-61) / [6.18](#cmd-armbian-bookworm-618) |
 | armbian | trixie | Debian 13 | 6.18 | 7.0 | [6.18](#cmd-armbian-trixie-618) / [7.0](#cmd-armbian-trixie-70) |
-| armbian | forky | Debian 14 / 前瞻 | 7.0 | - |  |
+| armbian | forky | Debian 14 / 前瞻 | 7.0 | - | [7.0](#cmd-armbian-forky-70) |
 | armbian | jammy | Ubuntu 22.04 LTS | 6.1 | 6.18 |  |
 | armbian | noble | Ubuntu 24.04 LTS | 6.18 | 7.0 |  |
 | armbian | resolute | Ubuntu 26.04 LTS / 前瞻 | 7.0 | - |  |
 | debian | bookworm | Debian 12 BSP 打包镜像 | 6.1 | 6.18 | [6.1](#cmd-debian-bookworm-61) / [6.18](#cmd-debian-bookworm-618) |
 | debian | trixie | Debian 13 BSP 打包镜像 | 6.18 | 7.0 | [6.18](#cmd-debian-trixie-618) / [7.0](#cmd-debian-trixie-70) |
-| debian | forky | Debian 14 BSP 打包镜像 / 前瞻 | 7.0 | - |  |
+| debian | forky | Debian 14 BSP 打包镜像 / 前瞻 | 7.0 | - | [7.0](#cmd-debian-forky-70) |
 | ubuntu | jammy | Ubuntu 22.04 LTS BSP 打包镜像 | 6.1 | 6.18 |  |
 | ubuntu | noble | Ubuntu 24.04 LTS BSP 打包镜像 | 6.18 | 7.0 |  |
 | ubuntu | resolute | Ubuntu 26.04 LTS BSP 打包镜像 / 前瞻 | 7.0 | - |  |
@@ -182,13 +182,15 @@ desktop
 | server | `bash build-image.sh armbian trixie 7.0 server` |
 | desktop | `bash build-image.sh armbian trixie 7.0 desktop` |
 
+<a id="cmd-armbian-forky-70"></a>
+
 ##### armbian forky 7.0
 
 | 类型 | 编译命令 |
 | --- | --- |
-| minimal |  |
-| server |  |
-| desktop |  |
+| minimal | `bash build-image.sh armbian forky 7.0 minimal` |
+| server | `bash build-image.sh armbian forky 7.0 server` |
+| desktop | `bash build-image.sh armbian forky 7.0 desktop` |
 
 ##### armbian jammy 6.1
 
@@ -240,7 +242,7 @@ desktop
 | --- | --- |
 | minimal | `bash build-image.sh debian bookworm 6.1 minimal` |
 | server | `bash build-image.sh debian bookworm 6.1 server` |
-| desktop |  |
+| desktop | `bash build-image.sh debian bookworm 6.1 desktop` |
 
 <a id="cmd-debian-bookworm-618"></a>
 
@@ -250,7 +252,7 @@ desktop
 | --- | --- |
 | minimal | `bash build-image.sh debian bookworm 6.18 minimal` |
 | server | `bash build-image.sh debian bookworm 6.18 server` |
-| desktop |  |
+| desktop | `bash build-image.sh debian bookworm 6.18 desktop` |
 
 <a id="cmd-debian-trixie-618"></a>
 
@@ -260,7 +262,7 @@ desktop
 | --- | --- |
 | minimal | `bash build-image.sh debian trixie 6.18 minimal` |
 | server | `bash build-image.sh debian trixie 6.18 server` |
-| desktop |  |
+| desktop | `bash build-image.sh debian trixie 6.18 desktop` |
 
 <a id="cmd-debian-trixie-70"></a>
 
@@ -270,15 +272,17 @@ desktop
 | --- | --- |
 | minimal | `bash build-image.sh debian trixie 7.0 minimal` |
 | server | `bash build-image.sh debian trixie 7.0 server` |
-| desktop |  |
+| desktop | `bash build-image.sh debian trixie 7.0 desktop` |
+
+<a id="cmd-debian-forky-70"></a>
 
 ##### debian forky 7.0
 
 | 类型 | 编译命令 |
 | --- | --- |
-| minimal |  |
-| server |  |
-| desktop |  |
+| minimal | `bash build-image.sh debian forky 7.0 minimal` |
+| server | `bash build-image.sh debian forky 7.0 server` |
+| desktop | `bash build-image.sh debian forky 7.0 desktop` |
 
 #### Ubuntu BSP 打包镜像
 
@@ -430,12 +434,14 @@ userpatches/                   Armbian 板级、内核、U-Boot、overlay 适配
 BSP deb 包会缓存到：
 
 ```text
-output/bsp/current/
-output/bsp/edge/
-output/bsp/vendor/
+output/bsp/debian-bookworm-vendor/
+output/bsp/debian-bookworm-current/
+output/bsp/debian-trixie-current/
+output/bsp/debian-trixie-linux7/
+output/bsp/debian-forky-linux7/
 ```
 
-如果已经有对应 BSP，脚本会优先复用，避免每次都重新编译内核。
+如果已经有对应 BSP，脚本会优先复用，避免每次都重新编译内核。BSP 缓存按 `系统-发行版-内核` 隔离，避免不同发行版复用或覆盖同一组 BSP deb。
 
 强制重新编译 BSP：
 

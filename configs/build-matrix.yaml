@@ -42,7 +42,7 @@ targets:
     primary_kernel: "7.0"
     secondary_kernel: null
     kernels:
-      "7.0": reserved
+      "7.0": implemented
 
   - system: armbian
     release: jammy
@@ -94,7 +94,7 @@ targets:
     primary_kernel: "7.0"
     secondary_kernel: null
     kernels:
-      "7.0": reserved
+      "7.0": implemented
 
   - system: ubuntu
     release: jammy

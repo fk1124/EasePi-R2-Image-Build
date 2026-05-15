@@ -3,7 +3,7 @@
 #  EasePi-R2 Debian BSP image builder
 #
 #  Usage:
-#    bash build-bsp-image.sh debian [trixie|bookworm] [current|edge|vendor|linux7] [minimal|server]
+#    bash build-bsp-image.sh debian [forky|trixie|bookworm] [current|edge|vendor|linux7] [minimal|server|desktop]
 #
 #  Examples:
 #    bash build-bsp-image.sh debian trixie current minimal
@@ -55,9 +55,10 @@ export CREATE_USER IMAGE_USER IMAGE_PASSWORD ROOT_PASSWORD LOCK_ROOT
 usage() {
     cat <<USAGE
 Usage:
-  bash build-bsp-image.sh debian [trixie|bookworm] [current|edge|vendor|linux7] [minimal|server]
+  bash build-bsp-image.sh debian [forky|trixie|bookworm] [current|edge|vendor|linux7] [minimal|server|desktop]
 
 Debian releases:
+  forky       Debian 14 preview
   trixie      Debian 13
   bookworm    Debian 12
 
@@ -65,6 +66,7 @@ Examples:
   bash build-bsp-image.sh debian trixie current minimal
   bash build-bsp-image.sh debian trixie linux7 minimal
   bash build-bsp-image.sh debian bookworm vendor server
+  bash build-bsp-image.sh debian forky linux7 desktop
 
 Optional environment variables:
   ARMBIAN_BUILD_DIR=/path/to/armbian/build
@@ -91,7 +93,7 @@ USAGE
 
 case "${DIST}" in
     debian)
-        case "${RELEASE}" in trixie|bookworm) ;; *) echo "ERROR: Debian only supports trixie/bookworm in this kit."; usage; exit 1 ;; esac
+        case "${RELEASE}" in forky|trixie|bookworm) ;; *) echo "ERROR: Debian only supports forky/trixie/bookworm in this kit."; usage; exit 1 ;; esac
         ;;
     -h|--help|help)
         usage; exit 0
@@ -105,7 +107,7 @@ case "${DIST}" in
 esac
 
 case "${BRANCH}" in current|edge|vendor|linux7) ;; *) echo "ERROR: unsupported BRANCH: ${BRANCH}"; usage; exit 1 ;; esac
-case "${IMAGE_TYPE}" in minimal|server) ;; *) echo "ERROR: unsupported IMAGE_TYPE: ${IMAGE_TYPE}"; usage; exit 1 ;; esac
+case "${IMAGE_TYPE}" in minimal|server|desktop) ;; *) echo "ERROR: unsupported IMAGE_TYPE: ${IMAGE_TYPE}"; usage; exit 1 ;; esac
 case "${CREATE_USER}" in yes|no) ;; *) echo "ERROR: CREATE_USER only supports yes/no."; usage; exit 1 ;; esac
 case "${LOCK_ROOT}" in yes|no) ;; *) echo "ERROR: LOCK_ROOT only supports yes/no."; usage; exit 1 ;; esac
 
@@ -156,7 +158,8 @@ fi
 
 ROOTFS_NAME="${DIST}-${RELEASE}-${BRANCH}-${IMAGE_TYPE}"
 IMAGE_NAME="EasePi-R2-${DIST}-${RELEASE}-${BRANCH}-${IMAGE_TYPE}"
-export ROOTFS_NAME IMAGE_NAME
+BSP_NAME="${DIST}-${RELEASE}-${BRANCH}"
+export ROOTFS_NAME IMAGE_NAME BSP_NAME
 
 cd "${REPO_DIR}"
 
