@@ -13,9 +13,10 @@
 - Raw image: `Armbian-unofficial_26.05.0-trunk_Easepi-r2_bookworm_vendor_6.1.115_minimal.img`
 - Raw image size: 2164260864 bytes
 - Raw SHA256: `23a436969d903e6ebad34bf33379197da87d32180fb08815e8652775e4b76378`
-- Release archive: `Armbian-unofficial_26.05.0-trunk_Easepi-r2_bookworm_vendor_6.1.115_minimal.img.xz`
-- Release archive size: 321349196 bytes
-- Release archive SHA256: `e600aa07db915f372b4acf6b491881646c3500af7dc9d3e39bcf08d4021843fb`
+- Local compressed archive: `Armbian-unofficial_26.05.0-trunk_Easepi-r2_bookworm_vendor_6.1.115_minimal.img.xz`
+- Local compressed archive size: 321349196 bytes
+- Local compressed archive SHA256: `e600aa07db915f372b4acf6b491881646c3500af7dc9d3e39bcf08d4021843fb`
+- GitHub Release assets intentionally exclude the image archive; image files are retained on the build host.
 
 ## Validation
 
