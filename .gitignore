@@ -1,0 +1,12 @@
+# Build outputs
+/output/
+/work/
+*.img
+*.img.xz
+*.sha
+*.log
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/

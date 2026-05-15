@@ -1,0 +1,179 @@
+version: 1
+board: easepi-r2
+architecture: arm64
+
+image_types:
+  armbian: [minimal, server, desktop]
+  debian: [minimal, server, desktop]
+  ubuntu: [minimal, server, desktop]
+  reserved: []
+
+kernel_aliases:
+  "6.1": vendor
+  "6.18": current
+  "7.0": linux7
+
+status:
+  implemented: "Build entry exists and is listed in README."
+  reserved: "Matrix target is planned, but the adapter is not implemented yet."
+
+targets:
+  - system: armbian
+    release: bookworm
+    note: Debian 12
+    primary_kernel: "6.1"
+    secondary_kernel: "6.18"
+    kernels:
+      "6.1": implemented
+      "6.18": implemented
+
+  - system: armbian
+    release: trixie
+    note: Debian 13
+    primary_kernel: "6.18"
+    secondary_kernel: "7.0"
+    kernels:
+      "6.18": implemented
+      "7.0": implemented
+
+  - system: armbian
+    release: forky
+    note: Debian 14 preview
+    primary_kernel: "7.0"
+    secondary_kernel: null
+    kernels:
+      "7.0": reserved
+
+  - system: armbian
+    release: jammy
+    note: Ubuntu 22.04 LTS
+    primary_kernel: "6.1"
+    secondary_kernel: "6.18"
+    kernels:
+      "6.1": reserved
+      "6.18": reserved
+
+  - system: armbian
+    release: noble
+    note: Ubuntu 24.04 LTS
+    primary_kernel: "6.18"
+    secondary_kernel: "7.0"
+    kernels:
+      "6.18": reserved
+      "7.0": reserved
+
+  - system: armbian
+    release: resolute
+    note: Ubuntu 26.04 LTS preview
+    primary_kernel: "7.0"
+    secondary_kernel: null
+    kernels:
+      "7.0": reserved
+
+  - system: debian
+    release: bookworm
+    note: Debian 12 BSP packed image
+    primary_kernel: "6.1"
+    secondary_kernel: "6.18"
+    kernels:
+      "6.1": implemented
+      "6.18": implemented
+
+  - system: debian
+    release: trixie
+    note: Debian 13 BSP packed image
+    primary_kernel: "6.18"
+    secondary_kernel: "7.0"
+    kernels:
+      "6.18": implemented
+      "7.0": implemented
+
+  - system: debian
+    release: forky
+    note: Debian 14 BSP packed image preview
+    primary_kernel: "7.0"
+    secondary_kernel: null
+    kernels:
+      "7.0": reserved
+
+  - system: ubuntu
+    release: jammy
+    note: Ubuntu 22.04 LTS BSP packed image
+    primary_kernel: "6.1"
+    secondary_kernel: "6.18"
+    kernels:
+      "6.1": reserved
+      "6.18": reserved
+
+  - system: ubuntu
+    release: noble
+    note: Ubuntu 24.04 LTS BSP packed image
+    primary_kernel: "6.18"
+    secondary_kernel: "7.0"
+    kernels:
+      "6.18": reserved
+      "7.0": reserved
+
+  - system: ubuntu
+    release: resolute
+    note: Ubuntu 26.04 LTS BSP packed image preview
+    primary_kernel: "7.0"
+    secondary_kernel: null
+    kernels:
+      "7.0": reserved
+
+  - system: FNOS
+    release: stable
+    note: FNOS
+    primary_kernel: "FN dedicated"
+    secondary_kernel: null
+    kernels:
+      "FN dedicated": reserved
+
+  - system: Alpine Linux
+    release: stable
+    note: apk lightweight rootfs
+    primary_kernel: "6.18"
+    secondary_kernel: null
+    kernels:
+      "6.18": reserved
+
+  - system: Fedora
+    release: latest
+    note: Fedora 44
+    primary_kernel: "6.18"
+    secondary_kernel: null
+    kernels:
+      "6.18": reserved
+
+  - system: Arch Linux ARM
+    release: rolling
+    note: pacman rolling release
+    primary_kernel: "6.18"
+    secondary_kernel: null
+    kernels:
+      "6.18": reserved
+
+  - system: Kali ARM
+    release: rolling
+    note: security testing Debian-family rolling rootfs
+    primary_kernel: "6.18"
+    secondary_kernel: null
+    kernels:
+      "6.18": reserved
+
+  - system: OpenWrt
+    release: "24"
+    note: OpenWrt 24
+    primary_kernel: "6.6"
+    secondary_kernel: null
+    kernels:
+      "6.6": reserved
+
+  - system: OpenWrt
+    release: "25"
+    note: OpenWrt 25
+    primary_kernel: "6.12"
+    secondary_kernel: null
+    kernels:
+      "6.12": reserved

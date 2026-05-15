@@ -1,0 +1,70 @@
+# Base system
+systemd
+systemd-sysv
+udev
+dbus
+sudo
+locales
+tzdata
+ca-certificates
+
+# SSH and basic tools
+openssh-server
+openssh-sftp-server
+curl
+wget
+rsync
+vim
+nano
+less
+htop
+tmux
+git
+xz-utils
+unzip
+file
+
+# Network
+iproute2
+iputils-ping
+isc-dhcp-client
+net-tools
+resolvconf
+ethtool
+nftables
+iptables
+dnsmasq
+bridge-utils
+ppp
+pppoe
+wpasupplicant
+hostapd
+
+# Boot / kernel helpers
+initramfs-tools
+linux-base
+u-boot-tools
+
+# Hardware / firmware helpers
+firmware-linux
+firmware-realtek
+firmware-brcm80211
+pciutils
+usbutils
+i2c-tools
+rfkill
+bluez
+bluez-tools
+ir-keytable
+fonts-dejavu-core
+# GPU / Mesa userspace for RK3588 Mali-G610 + mainline panthor
+firmware-misc-nonfree
+libdrm2
+libgbm1
+libegl-mesa0
+libgles2
+libgl1-mesa-dri
+mesa-utils
+mesa-vulkan-drivers
+vulkan-tools
+
