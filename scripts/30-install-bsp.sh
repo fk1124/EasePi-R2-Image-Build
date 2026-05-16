@@ -94,26 +94,9 @@ fix_firmware_aliases_in_rootfs() {
     local root="$1"
     local fw_dir="${root}/lib/firmware/brcm"
     local cy_fw_dir="${root}/lib/firmware/cypress"
-    local bt_patch="BCM4345C0_003.001.025.0162.0000_Generic_UART_37_4MHz_wlbga_ref_iLNA_iTR_eLG.hcd"
     local candidate=""
 
     [ -d "${fw_dir}" ] || return 0
-
-    if [ ! -f "${fw_dir}/${bt_patch}" ]; then
-        for candidate in \
-            "${fw_dir}/BCM4345C0.hcd" \
-            "${fw_dir}/BCM-0a5c-6410.hcd" \
-            "${fw_dir}/BCM-0bb4-0306.hcd"; do
-            [ -f "${candidate}" ] || continue
-            ${SUDO} ln -sfn "$(basename "${candidate}")" "${fw_dir}/${bt_patch}"
-            break
-        done
-    fi
-
-    if [ -f "${fw_dir}/${bt_patch}" ]; then
-        ${SUDO} ln -sfn "${bt_patch}" "${fw_dir}/BCM4345C0.linkease,easepi-r2.hcd"
-        ${SUDO} ln -sfn "${bt_patch}" "${fw_dir}/BCM4345C0.hcd"
-    fi
 
     if [ ! -f "${fw_dir}/brcmfmac43455-sdio.txt" ]; then
         for candidate in \
@@ -343,7 +326,6 @@ if [ "${BRANCH}" = "vendor" ] && [ "${EASEPI_R2_VENDOR_GPU_STACK}" = "libmali" ]
 fi
 
 FW_DIR="/lib/firmware/brcm"
-BT_PATCH="BCM4345C0_003.001.025.0162.0000_Generic_UART_37_4MHz_wlbga_ref_iLNA_iTR_eLG.hcd"
 CY_FW_DIR="/lib/firmware/cypress"
 if [ -d "$FW_DIR" ]; then
   if command -v zstd >/dev/null 2>&1; then
@@ -352,21 +334,6 @@ if [ -d "$FW_DIR" ]; then
       base="${zst%.zst}"
       [ -e "$base" ] || zstd -d -q -f "$zst" -o "$base" || true
     done
-  fi
-  if [ ! -f "$FW_DIR/$BT_PATCH" ]; then
-    for candidate in \
-      "$FW_DIR/BCM4345C0.hcd" \
-      "$FW_DIR/BCM-0a5c-6410.hcd" \
-      "$FW_DIR/BCM-0bb4-0306.hcd"; do
-      if [ -f "$candidate" ]; then
-        ln -sfn "$(basename "$candidate")" "$FW_DIR/$BT_PATCH"
-        break
-      fi
-    done
-  fi
-  if [ -f "$FW_DIR/$BT_PATCH" ]; then
-    ln -sfn "$BT_PATCH" "$FW_DIR/BCM4345C0.linkease,easepi-r2.hcd"
-    ln -sfn "$BT_PATCH" "$FW_DIR/BCM4345C0.hcd"
   fi
   if [ ! -f "$FW_DIR/brcmfmac43455-sdio.txt" ]; then
     for candidate in \

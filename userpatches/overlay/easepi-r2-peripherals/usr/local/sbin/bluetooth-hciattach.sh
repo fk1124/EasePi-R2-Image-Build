@@ -6,6 +6,11 @@ BT_SPEED="${BT_SPEED:-1500000}"
 
 rfkill unblock bluetooth 2>/dev/null || true
 
+if find /sys/firmware/devicetree/base -maxdepth 3 -type d -name bluetooth -path '*/serial@*/*' 2>/dev/null | grep -q .; then
+    echo "Bluetooth controller is described by device-tree serdev; let kernel manage ${TTY_DEV}."
+    exit 0
+fi
+
 if [ -d /sys/class/bluetooth/hci0 ]; then
     echo "Bluetooth HCI already present; kernel serdev owns ${TTY_DEV}."
     exit 0

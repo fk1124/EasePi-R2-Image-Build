@@ -1385,7 +1385,6 @@ install_deps(){
     rfkill bluetooth bluez bluez-tools \
     v4l-utils "${GPU_PACKAGES[@]}" || true
   FW_DIR="/lib/firmware/brcm"
-  BT_PATCH="BCM4345C0_003.001.025.0162.0000_Generic_UART_37_4MHz_wlbga_ref_iLNA_iTR_eLG.hcd"
   CY_FW_DIR="/lib/firmware/cypress"
   RTL_FW_DIR="/lib/firmware/rtl_nic"
   MALI_FW_DIR="/lib/firmware/arm/mali/arch10.8"
@@ -1402,21 +1401,6 @@ install_deps(){
     done
   fi
   if [ -d "$FW_DIR" ]; then
-    if [ ! -f "$FW_DIR/$BT_PATCH" ]; then
-      for candidate in \
-        "$FW_DIR/BCM4345C0.hcd" \
-        "$FW_DIR/BCM-0a5c-6410.hcd" \
-        "$FW_DIR/BCM-0bb4-0306.hcd"; do
-        if [ -f "$candidate" ]; then
-          ln -sfn "$(basename "$candidate")" "$FW_DIR/$BT_PATCH"
-          break
-        fi
-      done
-    fi
-    if [ -f "$FW_DIR/$BT_PATCH" ]; then
-      ln -sfn "$BT_PATCH" "$FW_DIR/BCM4345C0.linkease,easepi-r2.hcd"
-      ln -sfn "$BT_PATCH" "$FW_DIR/BCM4345C0.hcd"
-    fi
     if [ ! -f "$FW_DIR/brcmfmac43455-sdio.txt" ]; then
       for candidate in \
         "$FW_DIR/brcmfmac43455-sdio.AW-CM256SM.txt" \
