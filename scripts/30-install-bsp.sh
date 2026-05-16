@@ -114,7 +114,7 @@ branch_kernel_flavor() {
   case "${BRANCH}" in
     vendor) printf '%s\n' "vendor-rk35xx" ;;
     current) printf '%s\n' "current-rockchip64" ;;
-    edge) printf '%s\n' "edge-rockchip64" ;;
+    edge|linux7) printf '%s\n' "edge-rockchip64" ;;
     *)
       echo "ERROR: unsupported BRANCH inside BSP install: ${BRANCH}"
       exit 1

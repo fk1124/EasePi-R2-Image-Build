@@ -428,7 +428,7 @@ branch_kernel_deb_flavor() {
     case "${BRANCH}" in
         vendor) printf '%s\n' "vendor-rk35xx" ;;
         current) printf '%s\n' "current-rockchip64" ;;
-        edge) printf '%s\n' "edge-rockchip64" ;;
+        edge|linux7) printf '%s\n' "edge-rockchip64" ;;
         *)
             msg "ERROR: unsupported BRANCH for BSP packaging: ${BRANCH}"
             return 1
@@ -439,6 +439,7 @@ branch_kernel_deb_flavor() {
 branch_uboot_deb_prefix() {
     case "${BRANCH}" in
         vendor|current|edge) printf 'linux-u-boot-%s-%s\n' "${BOARD}" "${BRANCH}" ;;
+        linux7) printf 'linux-u-boot-%s-edge\n' "${BOARD}" ;;
         *)
             msg "ERROR: unsupported BRANCH for BSP packaging: ${BRANCH}"
             return 1
@@ -449,6 +450,7 @@ branch_uboot_deb_prefix() {
 branch_bsp_cli_deb_prefix() {
     case "${BRANCH}" in
         vendor|current|edge) printf 'armbian-bsp-cli-%s-%s\n' "${BOARD}" "${BRANCH}" ;;
+        linux7) printf 'armbian-bsp-cli-%s-edge\n' "${BOARD}" ;;
         *)
             msg "ERROR: unsupported BRANCH for BSP packaging: ${BRANCH}"
             return 1
@@ -486,11 +488,23 @@ copy_newest_matching_artifact_optional() {
     local label="$2"
     shift 2
 
-    if ! copy_newest_matching_artifact "${dest_dir}" "${label}" "$@" >/dev/null 2>&1; then
+    local newest="" pattern file
+    shopt -s nullglob
+    for pattern in "$@"; do
+        for file in ${pattern}; do
+            if [ -z "${newest}" ] || [ "${file}" -nt "${newest}" ]; then
+                newest="${file}"
+            fi
+        done
+    done
+    shopt -u nullglob
+
+    if [ -z "${newest}" ]; then
         return 0
     fi
 
-    copy_newest_matching_artifact "${dest_dir}" "${label}" "$@"
+    cp -a "${newest}" "${dest_dir}/"
+    msg "Selected ${label}: $(basename "${newest}")"
 }
 
 has_target_bsp_artifacts() {
