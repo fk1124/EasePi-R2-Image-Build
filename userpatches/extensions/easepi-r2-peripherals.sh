@@ -97,12 +97,63 @@ function pre_customize_image__copy_easepi_r2_peripheral_files() {
 function easepi_r2_fix_brcm_firmware_aliases() {
 	local FW_DIR="${SDCARD}/lib/firmware/brcm"
 	local BT_PATCH="BCM4345C0_003.001.025.0162.0000_Generic_UART_37_4MHz_wlbga_ref_iLNA_iTR_eLG.hcd"
+	local CY_FW_DIR="${SDCARD}/lib/firmware/cypress"
+	local RTL_FW_DIR="${SDCARD}/lib/firmware/rtl_nic"
+	local MALI_FW_DIR="${SDCARD}/lib/firmware/arm/mali/arch10.8"
+	local zst="" base="" preferred_txt="" preferred_hcd=""
 
 	[[ -d "${FW_DIR}" ]] || return 0
+
+	if command -v zstd >/dev/null 2>&1; then
+		for zst in \
+			"${FW_DIR}"/*.zst \
+			"${CY_FW_DIR}"/*.zst \
+			"${RTL_FW_DIR}"/*.zst \
+			"${MALI_FW_DIR}"/*.zst \
+			"${SDCARD}/lib/firmware/regulatory.db.zst"; do
+			[[ -f "${zst}" ]] || continue
+			base="${zst%.zst}"
+			[[ -e "${base}" ]] || zstd -d -q -f "${zst}" -o "${base}" || true
+		done
+	fi
+
+	if [[ ! -f "${FW_DIR}/${BT_PATCH}" ]]; then
+		for preferred_hcd in \
+			"${FW_DIR}/BCM4345C0_003.001.025.0162.0000_Generic_UART_37_4MHz_wlbga_ref_iLNA_iTR_eLG.hcd.zst" \
+			"${FW_DIR}/BCM4345C0.hcd.zst" \
+			"${FW_DIR}/BCM-0a5c-6410.hcd" \
+			"${FW_DIR}/BCM-0bb4-0306.hcd"; do
+			[[ -f "${preferred_hcd}" ]] || continue
+			base="${preferred_hcd%.zst}"
+			[[ -e "${base}" ]] || zstd -d -q -f "${preferred_hcd}" -o "${base}" || true
+			ln -sfn "$(basename "${base}")" "${FW_DIR}/${BT_PATCH}"
+			break
+		done
+	fi
 
 	if [[ -f "${FW_DIR}/${BT_PATCH}" ]]; then
 		ln -sfn "${BT_PATCH}" "${FW_DIR}/BCM4345C0.linkease,easepi-r2.hcd"
 		ln -sfn "${BT_PATCH}" "${FW_DIR}/BCM4345C0.hcd"
+	fi
+
+	if [[ ! -f "${FW_DIR}/brcmfmac43455-sdio.txt" ]]; then
+		for preferred_txt in \
+			"${FW_DIR}/brcmfmac43455-sdio.AW-CM256SM.txt" \
+			"${FW_DIR}/brcmfmac43455-sdio.acepc-t8.txt" \
+			"${FW_DIR}/brcmfmac43455-sdio.raspberrypi,4-model-b.txt"; do
+			if [[ -f "${preferred_txt}" ]]; then
+				ln -sfn "$(basename "${preferred_txt}")" "${FW_DIR}/brcmfmac43455-sdio.txt"
+				break
+			fi
+		done
+	fi
+
+	if [[ ! -f "${FW_DIR}/brcmfmac43455-sdio.bin" && -f "${CY_FW_DIR}/cyfmac43455-sdio.bin" ]]; then
+		ln -sfn "../cypress/cyfmac43455-sdio.bin" "${FW_DIR}/brcmfmac43455-sdio.bin"
+	fi
+
+	if [[ ! -f "${FW_DIR}/brcmfmac43455-sdio.clm_blob" && -f "${CY_FW_DIR}/cyfmac43455-sdio.clm_blob" ]]; then
+		ln -sfn "../cypress/cyfmac43455-sdio.clm_blob" "${FW_DIR}/brcmfmac43455-sdio.clm_blob"
 	fi
 
 	[[ -f "${FW_DIR}/brcmfmac43455-sdio.bin" ]] && \

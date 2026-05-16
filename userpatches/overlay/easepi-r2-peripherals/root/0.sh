@@ -959,9 +959,12 @@ Name=$WAN_IFACE
 
 [Link]
 RequiredForOnline=no
+ActivationPolicy=up
 
 [Network]
 DHCP=ipv4
+ConfigureWithoutCarrier=yes
+IgnoreCarrierLoss=yes
 IPv6AcceptRA=no
 LinkLocalAddressing=no
 $(for d in $WAN_DNS; do echo "DNS=$d"; done)
@@ -977,9 +980,12 @@ Name=$WAN_IFACE
 
 [Link]
 RequiredForOnline=no
+ActivationPolicy=up
 
 [Network]
 Address=$WAN_ADDR
+ConfigureWithoutCarrier=yes
+IgnoreCarrierLoss=yes
 IPv6AcceptRA=no
 LinkLocalAddressing=no
 $(for d in $WAN_DNS; do echo "DNS=$d"; done)
@@ -995,8 +1001,11 @@ Name=$WAN_IFACE
 
 [Link]
 RequiredForOnline=no
+ActivationPolicy=up
 
 [Network]
+ConfigureWithoutCarrier=yes
+IgnoreCarrierLoss=yes
 IPv6AcceptRA=no
 LinkLocalAddressing=no
 EOF_WAN
@@ -1377,10 +1386,53 @@ install_deps(){
     v4l-utils "${GPU_PACKAGES[@]}" || true
   FW_DIR="/lib/firmware/brcm"
   BT_PATCH="BCM4345C0_003.001.025.0162.0000_Generic_UART_37_4MHz_wlbga_ref_iLNA_iTR_eLG.hcd"
+  CY_FW_DIR="/lib/firmware/cypress"
+  RTL_FW_DIR="/lib/firmware/rtl_nic"
+  MALI_FW_DIR="/lib/firmware/arm/mali/arch10.8"
+  if command -v zstd >/dev/null 2>&1; then
+    for zst in \
+      "$FW_DIR"/*.zst \
+      "$CY_FW_DIR"/*.zst \
+      "$RTL_FW_DIR"/*.zst \
+      "$MALI_FW_DIR"/*.zst \
+      /lib/firmware/regulatory.db.zst; do
+      [ -f "$zst" ] || continue
+      base="${zst%.zst}"
+      [ -e "$base" ] || zstd -d -q -f "$zst" -o "$base" || true
+    done
+  fi
   if [ -d "$FW_DIR" ]; then
+    if [ ! -f "$FW_DIR/$BT_PATCH" ]; then
+      for candidate in \
+        "$FW_DIR/BCM4345C0.hcd" \
+        "$FW_DIR/BCM-0a5c-6410.hcd" \
+        "$FW_DIR/BCM-0bb4-0306.hcd"; do
+        if [ -f "$candidate" ]; then
+          ln -sfn "$(basename "$candidate")" "$FW_DIR/$BT_PATCH"
+          break
+        fi
+      done
+    fi
     if [ -f "$FW_DIR/$BT_PATCH" ]; then
       ln -sfn "$BT_PATCH" "$FW_DIR/BCM4345C0.linkease,easepi-r2.hcd"
       ln -sfn "$BT_PATCH" "$FW_DIR/BCM4345C0.hcd"
+    fi
+    if [ ! -f "$FW_DIR/brcmfmac43455-sdio.txt" ]; then
+      for candidate in \
+        "$FW_DIR/brcmfmac43455-sdio.AW-CM256SM.txt" \
+        "$FW_DIR/brcmfmac43455-sdio.acepc-t8.txt" \
+        "$FW_DIR/brcmfmac43455-sdio.raspberrypi,4-model-b.txt"; do
+        if [ -f "$candidate" ]; then
+          ln -sfn "$(basename "$candidate")" "$FW_DIR/brcmfmac43455-sdio.txt"
+          break
+        fi
+      done
+    fi
+    if [ ! -f "$FW_DIR/brcmfmac43455-sdio.bin" ] && [ -f "$CY_FW_DIR/cyfmac43455-sdio.bin" ]; then
+      ln -sfn ../cypress/cyfmac43455-sdio.bin "$FW_DIR/brcmfmac43455-sdio.bin"
+    fi
+    if [ ! -f "$FW_DIR/brcmfmac43455-sdio.clm_blob" ] && [ -f "$CY_FW_DIR/cyfmac43455-sdio.clm_blob" ]; then
+      ln -sfn ../cypress/cyfmac43455-sdio.clm_blob "$FW_DIR/brcmfmac43455-sdio.clm_blob"
     fi
     [ -f "$FW_DIR/brcmfmac43455-sdio.bin" ] && ln -sfn brcmfmac43455-sdio.bin "$FW_DIR/brcmfmac43455-sdio.linkease,easepi-r2.bin"
     [ -f "$FW_DIR/brcmfmac43455-sdio.txt" ] && ln -sfn brcmfmac43455-sdio.txt "$FW_DIR/brcmfmac43455-sdio.linkease,easepi-r2.txt"

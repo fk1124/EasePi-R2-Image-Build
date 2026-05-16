@@ -73,6 +73,74 @@ stage_vendor_libmali() {
     ${SUDO} cp "${deb_path}" "${ROOTFS_DIR}/tmp/easepi-r2-libmali.deb"
 }
 
+decompress_zst_firmware_in_rootfs() {
+    local root="$1"
+    local zst base
+
+    command -v zstd >/dev/null 2>&1 || return 0
+    for zst in \
+        "${root}/lib/firmware/brcm/"*.zst \
+        "${root}/lib/firmware/cypress/"*.zst \
+        "${root}/lib/firmware/rtl_nic/"*.zst \
+        "${root}/lib/firmware/arm/mali/arch10.8/"*.zst \
+        "${root}/lib/firmware/regulatory.db.zst"; do
+        [ -f "${zst}" ] || continue
+        base="${zst%.zst}"
+        [ -e "${base}" ] || ${SUDO} zstd -d -q -f "${zst}" -o "${base}" || true
+    done
+}
+
+fix_firmware_aliases_in_rootfs() {
+    local root="$1"
+    local fw_dir="${root}/lib/firmware/brcm"
+    local cy_fw_dir="${root}/lib/firmware/cypress"
+    local bt_patch="BCM4345C0_003.001.025.0162.0000_Generic_UART_37_4MHz_wlbga_ref_iLNA_iTR_eLG.hcd"
+    local candidate=""
+
+    [ -d "${fw_dir}" ] || return 0
+
+    if [ ! -f "${fw_dir}/${bt_patch}" ]; then
+        for candidate in \
+            "${fw_dir}/BCM4345C0.hcd" \
+            "${fw_dir}/BCM-0a5c-6410.hcd" \
+            "${fw_dir}/BCM-0bb4-0306.hcd"; do
+            [ -f "${candidate}" ] || continue
+            ${SUDO} ln -sfn "$(basename "${candidate}")" "${fw_dir}/${bt_patch}"
+            break
+        done
+    fi
+
+    if [ -f "${fw_dir}/${bt_patch}" ]; then
+        ${SUDO} ln -sfn "${bt_patch}" "${fw_dir}/BCM4345C0.linkease,easepi-r2.hcd"
+        ${SUDO} ln -sfn "${bt_patch}" "${fw_dir}/BCM4345C0.hcd"
+    fi
+
+    if [ ! -f "${fw_dir}/brcmfmac43455-sdio.txt" ]; then
+        for candidate in \
+            "${fw_dir}/brcmfmac43455-sdio.AW-CM256SM.txt" \
+            "${fw_dir}/brcmfmac43455-sdio.acepc-t8.txt" \
+            "${fw_dir}/brcmfmac43455-sdio.raspberrypi,4-model-b.txt"; do
+            [ -f "${candidate}" ] || continue
+            ${SUDO} ln -sfn "$(basename "${candidate}")" "${fw_dir}/brcmfmac43455-sdio.txt"
+            break
+        done
+    fi
+
+    if [ ! -f "${fw_dir}/brcmfmac43455-sdio.bin" ] && [ -f "${cy_fw_dir}/cyfmac43455-sdio.bin" ]; then
+        ${SUDO} ln -sfn ../cypress/cyfmac43455-sdio.bin "${fw_dir}/brcmfmac43455-sdio.bin"
+    fi
+    if [ ! -f "${fw_dir}/brcmfmac43455-sdio.clm_blob" ] && [ -f "${cy_fw_dir}/cyfmac43455-sdio.clm_blob" ]; then
+        ${SUDO} ln -sfn ../cypress/cyfmac43455-sdio.clm_blob "${fw_dir}/brcmfmac43455-sdio.clm_blob"
+    fi
+
+    [ -f "${fw_dir}/brcmfmac43455-sdio.bin" ] && \
+        ${SUDO} ln -sfn brcmfmac43455-sdio.bin "${fw_dir}/brcmfmac43455-sdio.linkease,easepi-r2.bin"
+    [ -f "${fw_dir}/brcmfmac43455-sdio.txt" ] && \
+        ${SUDO} ln -sfn brcmfmac43455-sdio.txt "${fw_dir}/brcmfmac43455-sdio.linkease,easepi-r2.txt"
+    [ -f "${fw_dir}/brcmfmac43455-sdio.clm_blob" ] && \
+        ${SUDO} ln -sfn brcmfmac43455-sdio.clm_blob "${fw_dir}/brcmfmac43455-sdio.linkease,easepi-r2.clm_blob"
+}
+
 write_gpu_profile() {
     ${SUDO} mkdir -p "${ROOTFS_DIR}/etc/modules-load.d" "${ROOTFS_DIR}/etc/modprobe.d"
 
@@ -143,6 +211,8 @@ CHROOT
 cleanup_mounts
 trap - EXIT
 
+decompress_zst_firmware_in_rootfs "${ROOTFS_DIR}"
+
 # Copy EasePi-R2 peripheral overlay directly, because this image does not rely on a full Armbian userspace.
 if [ -d "${REPO_DIR}/userpatches/overlay/easepi-r2-peripherals" ]; then
     ${SUDO} rsync -a "${REPO_DIR}/userpatches/overlay/easepi-r2-peripherals/" "${ROOTFS_DIR}/"
@@ -153,6 +223,7 @@ if [ -d "${REPO_DIR}/userpatches/overlay/easepi-r2-peripherals" ]; then
     ${SUDO} rm -f "${ROOTFS_DIR}/etc/modprobe.d/99-easepi-r2-panthor-manual-only.conf"
     ${SUDO} rm -f "${ROOTFS_DIR}/usr/local/sbin/easepi-r2-gpu-check"
     ${SUDO} chmod +x "${ROOTFS_DIR}/usr/local/sbin/easepi-r2-eth-order" 2>/dev/null || true
+    ${SUDO} chmod +x "${ROOTFS_DIR}/usr/local/sbin/bluetooth-hciattach.sh" 2>/dev/null || true
 fi
 write_gpu_profile
 
@@ -273,10 +344,46 @@ fi
 
 FW_DIR="/lib/firmware/brcm"
 BT_PATCH="BCM4345C0_003.001.025.0162.0000_Generic_UART_37_4MHz_wlbga_ref_iLNA_iTR_eLG.hcd"
+CY_FW_DIR="/lib/firmware/cypress"
 if [ -d "$FW_DIR" ]; then
+  if command -v zstd >/dev/null 2>&1; then
+    for zst in "$FW_DIR"/*.zst "$CY_FW_DIR"/*.zst; do
+      [ -f "$zst" ] || continue
+      base="${zst%.zst}"
+      [ -e "$base" ] || zstd -d -q -f "$zst" -o "$base" || true
+    done
+  fi
+  if [ ! -f "$FW_DIR/$BT_PATCH" ]; then
+    for candidate in \
+      "$FW_DIR/BCM4345C0.hcd" \
+      "$FW_DIR/BCM-0a5c-6410.hcd" \
+      "$FW_DIR/BCM-0bb4-0306.hcd"; do
+      if [ -f "$candidate" ]; then
+        ln -sfn "$(basename "$candidate")" "$FW_DIR/$BT_PATCH"
+        break
+      fi
+    done
+  fi
   if [ -f "$FW_DIR/$BT_PATCH" ]; then
     ln -sfn "$BT_PATCH" "$FW_DIR/BCM4345C0.linkease,easepi-r2.hcd"
     ln -sfn "$BT_PATCH" "$FW_DIR/BCM4345C0.hcd"
+  fi
+  if [ ! -f "$FW_DIR/brcmfmac43455-sdio.txt" ]; then
+    for candidate in \
+      "$FW_DIR/brcmfmac43455-sdio.AW-CM256SM.txt" \
+      "$FW_DIR/brcmfmac43455-sdio.acepc-t8.txt" \
+      "$FW_DIR/brcmfmac43455-sdio.raspberrypi,4-model-b.txt"; do
+      if [ -f "$candidate" ]; then
+        ln -sfn "$(basename "$candidate")" "$FW_DIR/brcmfmac43455-sdio.txt"
+        break
+      fi
+    done
+  fi
+  if [ ! -f "$FW_DIR/brcmfmac43455-sdio.bin" ] && [ -f "$CY_FW_DIR/cyfmac43455-sdio.bin" ]; then
+    ln -sfn ../cypress/cyfmac43455-sdio.bin "$FW_DIR/brcmfmac43455-sdio.bin"
+  fi
+  if [ ! -f "$FW_DIR/brcmfmac43455-sdio.clm_blob" ] && [ -f "$CY_FW_DIR/cyfmac43455-sdio.clm_blob" ]; then
+    ln -sfn ../cypress/cyfmac43455-sdio.clm_blob "$FW_DIR/brcmfmac43455-sdio.clm_blob"
   fi
   [ -f "$FW_DIR/brcmfmac43455-sdio.bin" ] && ln -sfn brcmfmac43455-sdio.bin "$FW_DIR/brcmfmac43455-sdio.linkease,easepi-r2.bin"
   [ -f "$FW_DIR/brcmfmac43455-sdio.txt" ] && ln -sfn brcmfmac43455-sdio.txt "$FW_DIR/brcmfmac43455-sdio.linkease,easepi-r2.txt"
@@ -317,11 +424,15 @@ rm -f /run/systemd/network/*netplan*.network 2>/dev/null || true
 
 systemctl enable bluetooth-hciattach.service 2>/dev/null || true
 systemctl enable ir-keymap.service 2>/dev/null || true
+chmod +x /usr/local/sbin/bluetooth-hciattach.sh 2>/dev/null || true
 
 ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime || true
 locale-gen zh_CN.UTF-8 en_US.UTF-8 2>/dev/null || true
 update-locale LANG=en_US.UTF-8 2>/dev/null || true
 CHROOT_USER
+
+decompress_zst_firmware_in_rootfs "${ROOTFS_DIR}"
+fix_firmware_aliases_in_rootfs "${ROOTFS_DIR}"
 
 # Network stack is managed by systemd-networkd. NetworkManager is intentionally not configured.
 

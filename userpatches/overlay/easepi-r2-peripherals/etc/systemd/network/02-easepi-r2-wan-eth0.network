@@ -3,9 +3,12 @@ Name=eth0
 
 [Link]
 RequiredForOnline=no
+ActivationPolicy=up
 
 [Network]
 DHCP=ipv4
+ConfigureWithoutCarrier=yes
+IgnoreCarrierLoss=yes
 IPv6AcceptRA=no
 LinkLocalAddressing=no
 DNS=223.5.5.5
