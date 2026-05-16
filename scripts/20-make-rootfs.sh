@@ -72,6 +72,14 @@ EOF_VENDOR_GPU
         cp -f "${src}" "${tmp}"
     fi
 
+    if [ "${DIST}" = "debian" ] && [ "${RELEASE}" = "forky" ]; then
+        sed -i -E 's/^[[:space:]]*isc-dhcp-client[[:space:]]*$/dhcpcd-base/' "${tmp}"
+    fi
+
+    if [ "${DIST}" = "ubuntu" ] && [ "${RELEASE}" = "resolute" ]; then
+        sed -i -E '/^[[:space:]]*resolvconf[[:space:]]*$/d' "${tmp}"
+    fi
+
     ${SUDO} cp "${tmp}" "${ROOTFS_DIR}/tmp/packages-minimal.txt"
     rm -f "${tmp}"
 }
