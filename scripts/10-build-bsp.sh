@@ -535,9 +535,6 @@ populate_tmp_bsp_dir() {
         "output/debs/linux-libc-dev-${kernel_flavor}_"*.deb
     copy_newest_matching_artifact_optional "${TMP_BSP_DIR}" "bsp cli" \
         "output/debs/${bsp_cli_prefix}_"*.deb
-    copy_newest_matching_artifact_optional "${TMP_BSP_DIR}" "firmware" \
-        "output/debs/armbian-firmware_"*.deb \
-        "output/debs/linux-firmware_"*.deb
 }
 
 set_kernel_config_not_set() {

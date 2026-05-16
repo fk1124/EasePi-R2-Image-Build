@@ -28,14 +28,23 @@ IMG="${IMAGE_DIR}/${IMAGE_NAME}.img"
 
 # FAT32 /boot partition size.
 #
-# Debian minimal normally fits in 256 MB. Increase BOOT_SIZE_MB manually
-# if your kernel, firmware, or initramfs becomes larger.
-# Armbian native images do not use this BSP pack script.
+# The BSP path now derives a safer default from the actual staged /boot payload,
+# because vendor kernels, initramfs, and duplicated real files on FAT can exceed
+# the older fixed 256 MiB assumption.
 #
 # Manual override example:
-#   BOOT_SIZE_MB=512 bash build-bsp-image.sh debian trixie current minimal
+#   BOOT_SIZE_MB=768 bash build-bsp-image.sh debian trixie current minimal
 BOOT_START_MIB="${BOOT_START_MIB:-16}"
-BOOT_SIZE_MB="${BOOT_SIZE_MB:-256}"
+if [ -n "${BOOT_SIZE_MB:-}" ]; then
+    BOOT_SIZE_MB="${BOOT_SIZE_MB}"
+else
+    BOOT_BYTES="$(${SUDO} du -sb "${ROOTFS_DIR}/boot" | awk '{print $1}')"
+    BOOT_MB=$(((BOOT_BYTES + 1024 * 1024 - 1) / (1024 * 1024)))
+    BOOT_SIZE_MB=$((BOOT_MB + 192))
+    if [ "${BOOT_SIZE_MB}" -lt 384 ]; then
+        BOOT_SIZE_MB=384
+    fi
+fi
 
 BOOT_END_MIB=$((BOOT_START_MIB + BOOT_SIZE_MB))
 

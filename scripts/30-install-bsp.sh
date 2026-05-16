@@ -132,10 +132,6 @@ fi
 
 dpkg -i "${DEBS[@]}" || apt-get -f install -y
 
-FW=(/tmp/bsp/armbian-firmware*.deb /tmp/bsp/linux-firmware*.deb)
-if [ ${#FW[@]} -gt 0 ]; then
-  dpkg -i "${FW[@]}" || apt-get -f install -y || true
-fi
 
 # initrd 是启动关键文件。这里不要再 || true，否则 initrd 生成失败也会继续打包。
 update-initramfs -u -k all
