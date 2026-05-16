@@ -413,7 +413,7 @@ bash ubuntu-noble-kde.sh
 desktop
 ```
 
-会启动 HDMI 图形登录并自动进入预设桌面用户；如果你想恢复“下次开机仍只进 tty”，可执行：
+会以预设桌面用户执行 `startx` 进入本地 HDMI 桌面；注销桌面后会直接回到 tty。如果你想确认系统保持 tty 默认启动，可执行：
 
 ```bash
 desktop-disable

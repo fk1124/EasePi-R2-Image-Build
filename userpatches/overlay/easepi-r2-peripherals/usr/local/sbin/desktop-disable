@@ -1,18 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONF_FILE="/etc/easepi-r2-desktop.env"
-
-if [ -r "${CONF_FILE}" ]; then
-    . "${CONF_FILE}"
-fi
-
-DESKTOP_GREETER="${DESKTOP_GREETER:-lightdm}"
-
 if [ "$(id -u)" -ne 0 ]; then
     exec sudo /usr/local/sbin/desktop-disable "$@"
 fi
 
-systemctl stop "${DESKTOP_GREETER}.service" >/dev/null 2>&1 || true
-
-echo "Desktop service stopped. Boot target remains tty."
+systemctl set-default multi-user.target >/dev/null 2>&1 || true
+echo "Desktop keeps tty as default boot target."

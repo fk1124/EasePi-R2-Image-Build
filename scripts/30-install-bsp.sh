@@ -154,17 +154,17 @@ configure_desktop_profile() {
     [ "${IMAGE_TYPE}" = "desktop" ] || return 0
     [ -n "${EASEPI_R2_DESKTOP_PROFILE}" ] || return 0
 
-    local greeter="lightdm"
     local session="xfce"
+    local start_command="startxfce4"
 
     case "${EASEPI_R2_DESKTOP_PROFILE}" in
         xfce)
-            greeter="lightdm"
             session="xfce"
+            start_command="startxfce4"
             ;;
         kde)
-            greeter="sddm"
             session="plasma"
+            start_command="startplasma-x11"
             ;;
         *)
             echo "ERROR: unsupported EASEPI_R2_DESKTOP_PROFILE: ${EASEPI_R2_DESKTOP_PROFILE}"
@@ -178,18 +178,20 @@ DESKTOP_ENABLED=yes
 DESKTOP_PROFILE=${EASEPI_R2_DESKTOP_PROFILE}
 DESKTOP_SESSION=${session}
 DESKTOP_USER=${IMAGE_USER}
-DESKTOP_TARGET=graphical.target
-DESKTOP_GREETER=${greeter}
+DESKTOP_START_COMMAND=${start_command}
 DESKTOP_LOCALE=${EASEPI_R2_DESKTOP_LOCALE}
 EOF_DESKTOP_ENV
 
     ${SUDO} tee "${ROOTFS_DIR}/etc/default/locale" >/dev/null <<EOF_LOCALE
 LANG=${EASEPI_R2_DESKTOP_LOCALE}
 LANGUAGE=zh_CN:zh
+LC_CTYPE=${EASEPI_R2_DESKTOP_LOCALE}
 LC_MESSAGES=${EASEPI_R2_DESKTOP_LOCALE}
+LC_ALL=
 EOF_LOCALE
 
     ${SUDO} tee "${ROOTFS_DIR}/etc/environment" >/dev/null <<EOF_ENVIRONMENT
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 LANG=${EASEPI_R2_DESKTOP_LOCALE}
 LANGUAGE=zh_CN:zh
 GTK_IM_MODULE=fcitx
@@ -199,39 +201,64 @@ INPUT_METHOD=fcitx
 SDL_IM_MODULE=fcitx
 EOF_ENVIRONMENT
 
-    case "${EASEPI_R2_DESKTOP_PROFILE}" in
-        kde)
-            ${SUDO} mkdir -p "${ROOTFS_DIR}/etc/sddm.conf.d"
-            ${SUDO} tee "${ROOTFS_DIR}/etc/sddm.conf.d/easepi-r2.conf" >/dev/null <<EOF_SDDM
-[Autologin]
-User=${IMAGE_USER}
-Session=plasma.desktop
+    ${SUDO} mkdir -p "${ROOTFS_DIR}/etc/X11/xorg.conf.d"
+    ${SUDO} tee "${ROOTFS_DIR}/etc/X11/Xwrapper.config" >/dev/null <<'EOF_XWRAPPER'
+allowed_users=console
+needs_root_rights=yes
+EOF_XWRAPPER
 
-[General]
-InputMethod=qtvirtualkeyboard
-EOF_SDDM
-            ;;
-        *)
-            ${SUDO} mkdir -p "${ROOTFS_DIR}/etc/lightdm/lightdm.conf.d"
-            ${SUDO} tee "${ROOTFS_DIR}/etc/lightdm/lightdm.conf.d/50-easepi-r2.conf" >/dev/null <<EOF_LIGHTDM
-[Seat:*]
-autologin-user=${IMAGE_USER}
-autologin-user-timeout=0
-user-session=xfce
-greeter-session=lightdm-gtk-greeter
-EOF_LIGHTDM
-            ;;
-    esac
+    ${SUDO} tee "${ROOTFS_DIR}/etc/X11/xorg.conf.d/40-libinput.conf" >/dev/null <<'EOF_LIBINPUT'
+Section "InputClass"
+        Identifier "libinput keyboard catchall"
+        MatchIsKeyboard "on"
+        MatchDevicePath "/dev/input/event*"
+        Driver "libinput"
+EndSection
+
+Section "InputClass"
+        Identifier "libinput pointer catchall"
+        MatchIsPointer "on"
+        MatchDevicePath "/dev/input/event*"
+        Driver "libinput"
+EndSection
+
+Section "InputClass"
+        Identifier "libinput touchpad catchall"
+        MatchIsTouchpad "on"
+        MatchDevicePath "/dev/input/event*"
+        Driver "libinput"
+EndSection
+EOF_LIBINPUT
 
     ${SUDO} tee "${ROOTFS_DIR}/etc/skel/.xinputrc" >/dev/null <<'EOF_XINPUT'
 run_im fcitx5
 EOF_XINPUT
 
-    ${SUDO} tee "${ROOTFS_DIR}/etc/skel/.xprofile" >/dev/null <<'EOF_SKEL_XPROFILE'
-if [ -f "$HOME/.xinputrc" ]; then
-    . "$HOME/.xinputrc"
-fi
-EOF_SKEL_XPROFILE
+    ${SUDO} tee "${ROOTFS_DIR}/etc/skel/.xinitrc" >/dev/null <<EOF_SKEL_XINITRC
+#!/bin/sh
+unset SESSION_MANAGER
+unset DBUS_SESSION_BUS_ADDRESS
+
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export LANG=${EASEPI_R2_DESKTOP_LOCALE}
+export LANGUAGE=zh_CN:zh
+export LC_CTYPE=${EASEPI_R2_DESKTOP_LOCALE}
+export LC_MESSAGES=${EASEPI_R2_DESKTOP_LOCALE}
+export LC_ALL=
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+export XMODIFIERS=@im=fcitx
+export INPUT_METHOD=fcitx
+export SDL_IM_MODULE=fcitx
+
+[ -f "\$HOME/.xinputrc" ] && . "\$HOME/.xinputrc"
+exec dbus-run-session sh -c 'fcitx5 -d >/tmp/fcitx5-\$USER.log 2>&1; exec ${start_command}'
+EOF_SKEL_XINITRC
+
+    ${SUDO} tee "${ROOTFS_DIR}/etc/skel/.xsession" >/dev/null <<EOF_SKEL_XSESSION
+#!/bin/sh
+exec "\$HOME/.xinitrc"
+EOF_SKEL_XSESSION
 }
 
 ${SUDO} mkdir -p "${ROOTFS_DIR}/tmp/bsp"
@@ -345,6 +372,9 @@ if [ "${CREATE_USER}" = "yes" ]; then
   printf '%s:%s\n' "${IMAGE_USER}" "${IMAGE_PASSWORD}" | chpasswd
   cp -af /etc/skel/. "/home/${IMAGE_USER}/" 2>/dev/null || true
   chown -R "${IMAGE_USER}:${IMAGE_USER}" "/home/${IMAGE_USER}" 2>/dev/null || true
+  grep -q '^PATH=' "/home/${IMAGE_USER}/.profile" 2>/dev/null || cat >>"/home/${IMAGE_USER}/.profile" <<'EOF_PROFILE_PATH'
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+EOF_PROFILE_PATH
 else
   cat >/etc/easepi-r2-no-default-login.txt <<'EOF_NO_LOGIN'
 This image was built without a default normal user.
@@ -493,20 +523,12 @@ if [ -n "${EASEPI_R2_DESKTOP_PROFILE}" ] && [ "${IMAGE_TYPE}" = "desktop" ]; the
   systemctl disable lightdm.service 2>/dev/null || true
   systemctl disable sddm.service 2>/dev/null || true
   systemctl set-default multi-user.target 2>/dev/null || true
-  case "${EASEPI_R2_DESKTOP_PROFILE}" in
-    kde)
-      systemctl enable sddm.service 2>/dev/null || true
-      ;;
-    *)
-      systemctl enable lightdm.service 2>/dev/null || true
-      ;;
-  esac
 fi
 
 ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime || true
 locale-gen zh_CN.UTF-8 en_US.UTF-8 2>/dev/null || true
 if [ -n "${EASEPI_R2_DESKTOP_PROFILE}" ] && [ "${IMAGE_TYPE}" = "desktop" ]; then
-  update-locale LANG="${EASEPI_R2_DESKTOP_LOCALE}" LANGUAGE=zh_CN:zh GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx XMODIFIERS=@im=fcitx INPUT_METHOD=fcitx 2>/dev/null || true
+  update-locale LANG="${EASEPI_R2_DESKTOP_LOCALE}" LANGUAGE=zh_CN:zh LC_CTYPE="${EASEPI_R2_DESKTOP_LOCALE}" LC_MESSAGES="${EASEPI_R2_DESKTOP_LOCALE}" GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx XMODIFIERS=@im=fcitx INPUT_METHOD=fcitx 2>/dev/null || true
 else
   update-locale LANG=en_US.UTF-8 2>/dev/null || true
 fi

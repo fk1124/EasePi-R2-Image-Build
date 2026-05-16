@@ -12,8 +12,7 @@ fi
 
 DESKTOP_USER="${DESKTOP_USER:-}"
 DESKTOP_SESSION="${DESKTOP_SESSION:-xfce}"
-DESKTOP_TARGET="${DESKTOP_TARGET:-graphical.target}"
-DESKTOP_GREETER="${DESKTOP_GREETER:-lightdm}"
+DESKTOP_START_COMMAND="${DESKTOP_START_COMMAND:-startxfce4}"
 
 if [ -z "${DESKTOP_USER}" ]; then
     echo "Desktop user is not configured."
@@ -29,5 +28,4 @@ if [ "$(id -u)" -ne 0 ]; then
     exec sudo /usr/local/sbin/desktop "$@"
 fi
 
-systemctl enable "${DESKTOP_GREETER}.service" >/dev/null 2>&1 || true
-systemctl start "${DESKTOP_GREETER}.service" >/dev/null 2>&1 || systemctl isolate "${DESKTOP_TARGET}"
+su - "${DESKTOP_USER}" -c 'export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; exec startx'

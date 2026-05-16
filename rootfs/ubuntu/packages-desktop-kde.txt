@@ -1,11 +1,14 @@
 # KDE Plasma desktop profile for EasePi-R2 Ubuntu BSP desktop presets
 xserver-xorg
-sddm
+xserver-xorg-legacy
+xserver-xorg-input-libinput
+xserver-xorg-input-evdev
+xinit
+xauth
 plasma-desktop
 konsole
 dolphin
 systemsettings
-plasma-nm
 plasma-workspace-wayland
 dbus-x11
 gvfs
@@ -29,3 +32,5 @@ pipewire
 wireplumber
 pipewire-pulse
 pavucontrol
+libinput-tools
+xinput

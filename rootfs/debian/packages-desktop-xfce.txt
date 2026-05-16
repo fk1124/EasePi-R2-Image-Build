@@ -1,8 +1,10 @@
 # XFCE desktop profile for EasePi-R2 Debian BSP desktop presets
 xserver-xorg
+xserver-xorg-legacy
+xserver-xorg-input-libinput
+xserver-xorg-input-evdev
 xinit
-lightdm
-lightdm-gtk-greeter
+xauth
 dbus-x11
 xfce4
 xfce4-goodies
@@ -27,3 +29,5 @@ pipewire
 wireplumber
 pipewire-pulse
 pavucontrol
+libinput-tools
+xinput
