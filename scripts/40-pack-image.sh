@@ -286,12 +286,44 @@ fi
 cleanup
 trap - EXIT
 
-# Shrink ext4 before compression when possible.
+# Shrink ext4, then shrink the GPT rootfs partition and the image file so the
+# raw .img footprint tracks the actual data instead of staying at 4 GiB.
 set +e
 LOOP_SHRINK="$(${SUDO} losetup --find --show --partscan "${IMG}")"
 ${SUDO} e2fsck -fy "${LOOP_SHRINK}p${ROOT_PART_NUM}" >/dev/null 2>&1
 ${SUDO} resize2fs -M "${LOOP_SHRINK}p${ROOT_PART_NUM}" >/dev/null 2>&1
+${SUDO} e2fsck -fy "${LOOP_SHRINK}p${ROOT_PART_NUM}" >/dev/null 2>&1
+MIN_BLOCK_COUNT="$(${SUDO} dumpe2fs -h "${LOOP_SHRINK}p${ROOT_PART_NUM}" 2>/dev/null | awk -F': *' '/Block count:/ {print $2; exit}')"
+MIN_BLOCK_SIZE="$(${SUDO} dumpe2fs -h "${LOOP_SHRINK}p${ROOT_PART_NUM}" 2>/dev/null | awk -F': *' '/Block size:/ {print $2; exit}')"
+ROOT_START_SECTOR="$(parted -sm "${IMG}" unit s print 2>/dev/null | awk -F: -v part="${ROOT_PART_NUM}" '$1 == part {sub(/s$/, "", $2); print $2; exit}')"
 ${SUDO} losetup -d "${LOOP_SHRINK}" >/dev/null 2>&1
+
+if [ -n "${MIN_BLOCK_COUNT}" ] && [ -n "${MIN_BLOCK_SIZE}" ] && [ -n "${ROOT_START_SECTOR}" ]; then
+    ROOT_BYTES=$((MIN_BLOCK_COUNT * MIN_BLOCK_SIZE))
+    ROOT_SECTORS=$(((ROOT_BYTES + 512 - 1) / 512))
+    ROOT_PADDING_SECTORS=$(((64 * 1024 * 1024) / 512))
+    if [ "${ROOT_PADDING_SECTORS}" -lt 131072 ]; then
+        ROOT_PADDING_SECTORS=131072
+    fi
+    ROOT_END_SECTOR=$((ROOT_START_SECTOR + ROOT_SECTORS + ROOT_PADDING_SECTORS - 1))
+    CURRENT_IMAGE_BYTES="$(stat -c%s "${IMG}")"
+    CURRENT_LAST_SECTOR=$(((CURRENT_IMAGE_BYTES / 512) - 1))
+    CURRENT_LAST_USABLE=$((CURRENT_LAST_SECTOR - 33))
+    if [ "${ROOT_END_SECTOR}" -gt "${CURRENT_LAST_USABLE}" ]; then
+        ROOT_END_SECTOR="${CURRENT_LAST_USABLE}"
+    fi
+
+    ${SUDO} sgdisk --delete="${ROOT_PART_NUM}" "${IMG}" >/dev/null 2>&1
+    ${SUDO} sgdisk --new="${ROOT_PART_NUM}:${ROOT_START_SECTOR}:${ROOT_END_SECTOR}" \
+        --typecode="${ROOT_PART_NUM}:8300" \
+        --change-name="${ROOT_PART_NUM}:rootfs" \
+        "${IMG}" >/dev/null 2>&1
+
+    NEW_IMAGE_BYTES=$(((ROOT_END_SECTOR + 34) * 512))
+    truncate -s "${NEW_IMAGE_BYTES}" "${IMG}"
+    ${SUDO} sgdisk -e "${IMG}" >/dev/null 2>&1
+    ${SUDO} sgdisk -v "${IMG}" >/dev/null 2>&1
+fi
 set -e
 
 xz -T0 -z -k -f "${IMG}"
