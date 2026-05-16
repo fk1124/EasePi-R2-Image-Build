@@ -9,6 +9,7 @@ DIST="${DIST:-debian}"
 RELEASE="${RELEASE:-trixie}"
 BRANCH="${BRANCH:-current}"
 IMAGE_TYPE="${IMAGE_TYPE:-minimal}"
+EASEPI_R2_DESKTOP_PROFILE="${EASEPI_R2_DESKTOP_PROFILE:-}"
 ROOTFS_NAME="${ROOTFS_NAME:-${DIST}-${RELEASE}-${BRANCH}-${IMAGE_TYPE}}"
 ROOTFS_DIR="${REPO_DIR}/output/rootfs/${ROOTFS_NAME}"
 
@@ -96,7 +97,11 @@ case "${IMAGE_TYPE}" in
         ${SUDO} cp "${REPO_DIR}/rootfs/${DIST}/packages-server.txt" "${ROOTFS_DIR}/tmp/packages-extra.txt"
         ;;
     desktop)
-        ${SUDO} cp "${REPO_DIR}/rootfs/${DIST}/packages-desktop.txt" "${ROOTFS_DIR}/tmp/packages-extra.txt"
+        desktop_packages="${REPO_DIR}/rootfs/${DIST}/packages-desktop.txt"
+        if [ -n "${EASEPI_R2_DESKTOP_PROFILE}" ] && [ -f "${REPO_DIR}/rootfs/${DIST}/packages-desktop-${EASEPI_R2_DESKTOP_PROFILE}.txt" ]; then
+            desktop_packages="${REPO_DIR}/rootfs/${DIST}/packages-desktop-${EASEPI_R2_DESKTOP_PROFILE}.txt"
+        fi
+        ${SUDO} cp "${desktop_packages}" "${ROOTFS_DIR}/tmp/packages-extra.txt"
         ;;
 esac
 

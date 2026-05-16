@@ -35,6 +35,8 @@ IMAGE_USER="${IMAGE_USER:-}"
 IMAGE_PASSWORD="${IMAGE_PASSWORD:-}"
 ROOT_PASSWORD="${ROOT_PASSWORD:-}"
 LOCK_ROOT="${LOCK_ROOT:-no}"
+EASEPI_R2_DESKTOP_PROFILE="${EASEPI_R2_DESKTOP_PROFILE:-}"
+EASEPI_R2_DESKTOP_LOCALE="${EASEPI_R2_DESKTOP_LOCALE:-}"
 
 if [ "$(id -u)" -eq 0 ]; then
     SUDO="${SUDO:-}"
@@ -51,6 +53,7 @@ fi
 export DIST RELEASE BRANCH ARMBIAN_BRANCH IMAGE_TYPE BOARD ARCH TARGET_HOSTNAME
 export EASEPI_R2_KERNEL_PROFILE
 export CREATE_USER IMAGE_USER IMAGE_PASSWORD ROOT_PASSWORD LOCK_ROOT
+export EASEPI_R2_DESKTOP_PROFILE EASEPI_R2_DESKTOP_LOCALE
 
 usage() {
     cat <<USAGE
@@ -80,6 +83,8 @@ Optional environment variables:
   IMAGE_SIZE_MB=4096
   BOOT_SIZE_MB=256
   FORCE_BSP_REBUILD=yes
+  EASEPI_R2_DESKTOP_PROFILE=xfce|kde
+  EASEPI_R2_DESKTOP_LOCALE=zh_CN.UTF-8
 
 Optional login configuration, disabled by default:
   CREATE_USER=no
@@ -119,9 +124,15 @@ case "${BRANCH}" in current|edge|vendor|linux7) ;; *) echo "ERROR: unsupported B
 case "${IMAGE_TYPE}" in minimal|server|desktop) ;; *) echo "ERROR: unsupported IMAGE_TYPE: ${IMAGE_TYPE}"; usage; exit 1 ;; esac
 case "${CREATE_USER}" in yes|no) ;; *) echo "ERROR: CREATE_USER only supports yes/no."; usage; exit 1 ;; esac
 case "${LOCK_ROOT}" in yes|no) ;; *) echo "ERROR: LOCK_ROOT only supports yes/no."; usage; exit 1 ;; esac
+case "${EASEPI_R2_DESKTOP_PROFILE}" in ""|xfce|kde) ;; *) echo "ERROR: EASEPI_R2_DESKTOP_PROFILE only supports xfce/kde."; usage; exit 1 ;; esac
 
 if [ -n "${ROOT_PASSWORD}" ] && [ "${LOCK_ROOT}" = "yes" ]; then
     echo "ERROR: ROOT_PASSWORD and LOCK_ROOT=yes cannot be used together."
+    exit 1
+fi
+
+if [ -n "${EASEPI_R2_DESKTOP_PROFILE}" ] && [ "${IMAGE_TYPE}" != "desktop" ]; then
+    echo "ERROR: EASEPI_R2_DESKTOP_PROFILE can only be used with IMAGE_TYPE=desktop."
     exit 1
 fi
 
@@ -133,36 +144,51 @@ if [ "${CREATE_USER}" = "yes" ]; then
     fi
 fi
 
+if [ -n "${EASEPI_R2_DESKTOP_PROFILE}" ] && [ "${CREATE_USER}" != "yes" ]; then
+    echo "ERROR: desktop presets require CREATE_USER=yes so the GUI can log into a normal sudo user."
+    exit 1
+fi
+
+prompt_root_password() {
+    if [ ! -t 0 ]; then
+        echo "ERROR: ROOT_PASSWORD is required in non-interactive builds."
+        echo "Example: ROOT_PASSWORD='your_root_password' bash build-bsp-image.sh ${DIST} ${RELEASE} ${BRANCH} ${IMAGE_TYPE}"
+        exit 1
+    fi
+
+    echo
+    echo "Please set a root password for first login. It will not be printed or saved in the repository."
+    while true; do
+        read -r -s -p "Root password: " ROOT_PASSWORD
+        echo
+        read -r -s -p "Confirm root password: " ROOT_PASSWORD_CONFIRM
+        echo
+        if [ -z "${ROOT_PASSWORD}" ]; then
+            echo "ERROR: root password cannot be empty."
+            continue
+        fi
+        if [ "${ROOT_PASSWORD}" != "${ROOT_PASSWORD_CONFIRM}" ]; then
+            echo "ERROR: passwords do not match."
+            continue
+        fi
+        break
+    done
+    unset ROOT_PASSWORD_CONFIRM
+    export ROOT_PASSWORD
+}
+
 # 如果默认不创建普通用户，那么必须有一个可用的 root 登录方式。
 # 优先使用 ROOT_PASSWORD；交互终端下会提示输入；非交互环境必须显式传入。
 if [ "${CREATE_USER}" = "no" ] && [ -z "${ROOT_PASSWORD}" ] && [ "${LOCK_ROOT}" != "yes" ]; then
-    if [ -t 0 ]; then
-        echo
-        echo "No normal user will be created."
-        echo "Please set a root password for first login. It will not be printed or saved in the repository."
-        while true; do
-            read -r -s -p "Root password: " ROOT_PASSWORD
-            echo
-            read -r -s -p "Confirm root password: " ROOT_PASSWORD_CONFIRM
-            echo
-            if [ -z "${ROOT_PASSWORD}" ]; then
-                echo "ERROR: root password cannot be empty."
-                continue
-            fi
-            if [ "${ROOT_PASSWORD}" != "${ROOT_PASSWORD_CONFIRM}" ]; then
-                echo "ERROR: passwords do not match."
-                continue
-            fi
-            break
-        done
-        unset ROOT_PASSWORD_CONFIRM
-        export ROOT_PASSWORD
-    else
-        echo "ERROR: no normal user is created by default, so ROOT_PASSWORD is required in non-interactive builds."
-        echo "Example: ROOT_PASSWORD='your_root_password' bash build-bsp-image.sh ${DIST} ${RELEASE} ${BRANCH} ${IMAGE_TYPE}"
-        echo "Advanced: set LOCK_ROOT=yes only if you have another way to enter the system."
-        exit 1
-    fi
+    echo
+    echo "No normal user will be created."
+    prompt_root_password
+fi
+
+if [ -n "${EASEPI_R2_DESKTOP_PROFILE}" ] && [ -z "${ROOT_PASSWORD}" ] && [ "${LOCK_ROOT}" != "yes" ]; then
+    echo
+    echo "Desktop presets keep tty boot but still require a root rescue password."
+    prompt_root_password
 fi
 
 ROOTFS_NAME="${DIST}-${RELEASE}-${BRANCH}-${IMAGE_TYPE}"
@@ -189,6 +215,10 @@ if [ "${CREATE_USER}" = "yes" ]; then
 fi
 printf '  ROOT_PASS   = %s\n' "$([ -n "${ROOT_PASSWORD}" ] && echo "set" || echo "not set")"
 printf '  LOCK_ROOT   = %s\n' "${LOCK_ROOT}"
+printf '  DESKTOP     = %s\n' "${EASEPI_R2_DESKTOP_PROFILE:-default}"
+if [ -n "${EASEPI_R2_DESKTOP_LOCALE}" ]; then
+    printf '  DESKTOP_LOCALE = %s\n' "${EASEPI_R2_DESKTOP_LOCALE}"
+fi
 printf '============================================\n\n'
 
 bash scripts/00-env.sh

@@ -391,6 +391,40 @@ Debian / Ubuntu BSP 打包镜像默认不创建公开固定账号。构建时需
 ROOT_PASSWORD='你的root密码' bash build-image.sh debian trixie 6.18 minimal
 ```
 
+桌面专用预设脚本：
+
+```bash
+bash debian-6.1-xfce.sh
+bash debian-6.18-xfce.sh
+bash ubuntu-noble-kde.sh
+```
+
+这 3 个脚本会在编译开始时交互要求：
+
+```text
+1. 桌面 sudo 用户名
+2. 桌面 sudo 用户密码
+3. root 密码
+```
+
+这些桌面预设镜像默认仍然开机进入 tty，不会直接进桌面。登录 tty 后：
+
+```bash
+desktop
+```
+
+会启动 HDMI 图形登录并自动进入预设桌面用户；如果你想恢复“下次开机仍只进 tty”，可执行：
+
+```bash
+desktop-disable
+```
+
+桌面预设默认包含：
+
+```text
+简体中文 locale / 中文字体 / fcitx5 中文输入法 / 中文桌面语言包
+```
+
 如果要创建普通 sudo 用户：
 
 ```bash

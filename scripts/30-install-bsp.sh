@@ -25,6 +25,8 @@ EASEPI_R2_VENDOR_GPU_STACK="${EASEPI_R2_VENDOR_GPU_STACK:-libmali}"
 EASEPI_R2_LIBMALI_DEB_URL="${EASEPI_R2_LIBMALI_DEB_URL:-https://github.com/tsukumijima/libmali-rockchip/releases/download/v1.9-1-20260312-bd33ee2/libmali-valhall-g610-g24p0-gbm_1.9-1_arm64.deb}"
 EASEPI_R2_LIBMALI_DEB_SHA256="${EASEPI_R2_LIBMALI_DEB_SHA256:-32ffe853e8d56295284637252f1da15dd868a8f7c6b8da6b9f77616ba285eb1a}"
 EASEPI_R2_VENDOR_HDMI_DEBUG="${EASEPI_R2_VENDOR_HDMI_DEBUG:-no}"
+EASEPI_R2_DESKTOP_PROFILE="${EASEPI_R2_DESKTOP_PROFILE:-}"
+EASEPI_R2_DESKTOP_LOCALE="${EASEPI_R2_DESKTOP_LOCALE:-zh_CN.UTF-8}"
 
 printf '\n[3/4] Install EasePi-R2 kernel / DTB / boot files into rootfs\n'
 
@@ -148,6 +150,90 @@ EOF_GPU_MODPROBE_MAINLINE
     fi
 }
 
+configure_desktop_profile() {
+    [ "${IMAGE_TYPE}" = "desktop" ] || return 0
+    [ -n "${EASEPI_R2_DESKTOP_PROFILE}" ] || return 0
+
+    local greeter="lightdm"
+    local session="xfce"
+
+    case "${EASEPI_R2_DESKTOP_PROFILE}" in
+        xfce)
+            greeter="lightdm"
+            session="xfce"
+            ;;
+        kde)
+            greeter="sddm"
+            session="plasma"
+            ;;
+        *)
+            echo "ERROR: unsupported EASEPI_R2_DESKTOP_PROFILE: ${EASEPI_R2_DESKTOP_PROFILE}"
+            exit 1
+            ;;
+    esac
+
+    ${SUDO} mkdir -p "${ROOTFS_DIR}/etc/skel/.config"
+    ${SUDO} tee "${ROOTFS_DIR}/etc/easepi-r2-desktop.env" >/dev/null <<EOF_DESKTOP_ENV
+DESKTOP_ENABLED=yes
+DESKTOP_PROFILE=${EASEPI_R2_DESKTOP_PROFILE}
+DESKTOP_SESSION=${session}
+DESKTOP_USER=${IMAGE_USER}
+DESKTOP_TARGET=graphical.target
+DESKTOP_GREETER=${greeter}
+DESKTOP_LOCALE=${EASEPI_R2_DESKTOP_LOCALE}
+EOF_DESKTOP_ENV
+
+    ${SUDO} tee "${ROOTFS_DIR}/etc/default/locale" >/dev/null <<EOF_LOCALE
+LANG=${EASEPI_R2_DESKTOP_LOCALE}
+LANGUAGE=zh_CN:zh
+LC_MESSAGES=${EASEPI_R2_DESKTOP_LOCALE}
+EOF_LOCALE
+
+    ${SUDO} tee "${ROOTFS_DIR}/etc/environment" >/dev/null <<EOF_ENVIRONMENT
+LANG=${EASEPI_R2_DESKTOP_LOCALE}
+LANGUAGE=zh_CN:zh
+GTK_IM_MODULE=fcitx
+QT_IM_MODULE=fcitx
+XMODIFIERS=@im=fcitx
+INPUT_METHOD=fcitx
+SDL_IM_MODULE=fcitx
+EOF_ENVIRONMENT
+
+    case "${EASEPI_R2_DESKTOP_PROFILE}" in
+        kde)
+            ${SUDO} mkdir -p "${ROOTFS_DIR}/etc/sddm.conf.d"
+            ${SUDO} tee "${ROOTFS_DIR}/etc/sddm.conf.d/easepi-r2.conf" >/dev/null <<EOF_SDDM
+[Autologin]
+User=${IMAGE_USER}
+Session=plasma.desktop
+
+[General]
+InputMethod=qtvirtualkeyboard
+EOF_SDDM
+            ;;
+        *)
+            ${SUDO} mkdir -p "${ROOTFS_DIR}/etc/lightdm/lightdm.conf.d"
+            ${SUDO} tee "${ROOTFS_DIR}/etc/lightdm/lightdm.conf.d/50-easepi-r2.conf" >/dev/null <<EOF_LIGHTDM
+[Seat:*]
+autologin-user=${IMAGE_USER}
+autologin-user-timeout=0
+user-session=xfce
+greeter-session=lightdm-gtk-greeter
+EOF_LIGHTDM
+            ;;
+    esac
+
+    ${SUDO} tee "${ROOTFS_DIR}/etc/skel/.xinputrc" >/dev/null <<'EOF_XINPUT'
+run_im fcitx5
+EOF_XINPUT
+
+    ${SUDO} tee "${ROOTFS_DIR}/etc/skel/.xprofile" >/dev/null <<'EOF_SKEL_XPROFILE'
+if [ -f "$HOME/.xinputrc" ]; then
+    . "$HOME/.xinputrc"
+fi
+EOF_SKEL_XPROFILE
+}
+
 ${SUDO} mkdir -p "${ROOTFS_DIR}/tmp/bsp"
 ${SUDO} cp "${BSP_DIR}"/*.deb "${ROOTFS_DIR}/tmp/bsp/"
 stage_vendor_libmali
@@ -209,6 +295,7 @@ if [ -d "${REPO_DIR}/userpatches/overlay/easepi-r2-peripherals" ]; then
     ${SUDO} chmod +x "${ROOTFS_DIR}/usr/local/sbin/bluetooth-hciattach.sh" 2>/dev/null || true
 fi
 write_gpu_profile
+configure_desktop_profile
 
 # Basic system identity and optional account configuration.
 ${SUDO} tee "${ROOTFS_DIR}/etc/hostname" >/dev/null <<EOF_HOST
@@ -234,6 +321,9 @@ ${SUDO} chroot "${ROOTFS_DIR}" /usr/bin/env \
   LOCK_ROOT="${LOCK_ROOT}" \
   BRANCH="${BRANCH}" \
   EASEPI_R2_VENDOR_GPU_STACK="${EASEPI_R2_VENDOR_GPU_STACK}" \
+  IMAGE_TYPE="${IMAGE_TYPE}" \
+  EASEPI_R2_DESKTOP_PROFILE="${EASEPI_R2_DESKTOP_PROFILE}" \
+  EASEPI_R2_DESKTOP_LOCALE="${EASEPI_R2_DESKTOP_LOCALE}" \
   /bin/bash -e <<'CHROOT_USER'
 export DEBIAN_FRONTEND=noninteractive
 
@@ -253,6 +343,8 @@ if [ "${CREATE_USER}" = "yes" ]; then
   fi
 
   printf '%s:%s\n' "${IMAGE_USER}" "${IMAGE_PASSWORD}" | chpasswd
+  cp -af /etc/skel/. "/home/${IMAGE_USER}/" 2>/dev/null || true
+  chown -R "${IMAGE_USER}:${IMAGE_USER}" "/home/${IMAGE_USER}" 2>/dev/null || true
 else
   cat >/etc/easepi-r2-no-default-login.txt <<'EOF_NO_LOGIN'
 This image was built without a default normal user.
@@ -393,9 +485,31 @@ systemctl enable bluetooth-hciattach.service 2>/dev/null || true
 systemctl enable ir-keymap.service 2>/dev/null || true
 chmod +x /usr/local/sbin/bluetooth-hciattach.sh 2>/dev/null || true
 
+if [ -n "${EASEPI_R2_DESKTOP_PROFILE}" ] && [ "${IMAGE_TYPE}" = "desktop" ]; then
+  if [ -n "${IMAGE_USER}" ] && id -u "${IMAGE_USER}" >/dev/null 2>&1; then
+    usermod -a -G render,input "${IMAGE_USER}" 2>/dev/null || true
+  fi
+  systemctl disable display-manager.service 2>/dev/null || true
+  systemctl disable lightdm.service 2>/dev/null || true
+  systemctl disable sddm.service 2>/dev/null || true
+  systemctl set-default multi-user.target 2>/dev/null || true
+  case "${EASEPI_R2_DESKTOP_PROFILE}" in
+    kde)
+      systemctl enable sddm.service 2>/dev/null || true
+      ;;
+    *)
+      systemctl enable lightdm.service 2>/dev/null || true
+      ;;
+  esac
+fi
+
 ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime || true
 locale-gen zh_CN.UTF-8 en_US.UTF-8 2>/dev/null || true
-update-locale LANG=en_US.UTF-8 2>/dev/null || true
+if [ -n "${EASEPI_R2_DESKTOP_PROFILE}" ] && [ "${IMAGE_TYPE}" = "desktop" ]; then
+  update-locale LANG="${EASEPI_R2_DESKTOP_LOCALE}" LANGUAGE=zh_CN:zh GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx XMODIFIERS=@im=fcitx INPUT_METHOD=fcitx 2>/dev/null || true
+else
+  update-locale LANG=en_US.UTF-8 2>/dev/null || true
+fi
 CHROOT_USER
 
 decompress_zst_firmware_in_rootfs "${ROOTFS_DIR}"
