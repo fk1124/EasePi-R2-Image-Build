@@ -415,10 +415,115 @@ calc_bsp_input_hash() {
         printf 'ARMBIAN_BRANCH=%s\n' "${ARMBIAN_BRANCH}"
         printf 'KERNEL_PROFILE=%s\n' "${EASEPI_R2_KERNEL_PROFILE:-default}"
         cd "${REPO_DIR}"
+        find build-bsp-image.sh scripts "rootfs/${DIST}" -type f -print0 2>/dev/null | sort -z | while IFS= read -r -d '' f; do
+            sha256sum "$f"
+        done
         find userpatches -type f -print0 2>/dev/null | sort -z | while IFS= read -r -d '' f; do
             sha256sum "$f"
         done
     ) | sha256sum | awk '{print $1}'
+}
+
+branch_kernel_deb_flavor() {
+    case "${BRANCH}" in
+        vendor) printf '%s\n' "vendor-rk35xx" ;;
+        current) printf '%s\n' "current-rockchip64" ;;
+        edge) printf '%s\n' "edge-rockchip64" ;;
+        *)
+            msg "ERROR: unsupported BRANCH for BSP packaging: ${BRANCH}"
+            return 1
+            ;;
+    esac
+}
+
+branch_uboot_deb_prefix() {
+    case "${BRANCH}" in
+        vendor|current|edge) printf 'linux-u-boot-%s-%s\n' "${BOARD}" "${BRANCH}" ;;
+        *)
+            msg "ERROR: unsupported BRANCH for BSP packaging: ${BRANCH}"
+            return 1
+            ;;
+    esac
+}
+
+branch_bsp_cli_deb_prefix() {
+    case "${BRANCH}" in
+        vendor|current|edge) printf 'armbian-bsp-cli-%s-%s\n' "${BOARD}" "${BRANCH}" ;;
+        *)
+            msg "ERROR: unsupported BRANCH for BSP packaging: ${BRANCH}"
+            return 1
+            ;;
+    esac
+}
+
+copy_newest_matching_artifact() {
+    local dest_dir="$1"
+    local label="$2"
+    shift 2
+
+    local newest="" pattern file
+    shopt -s nullglob
+    for pattern in "$@"; do
+        for file in ${pattern}; do
+            if [ -z "${newest}" ] || [ "${file}" -nt "${newest}" ]; then
+                newest="${file}"
+            fi
+        done
+    done
+    shopt -u nullglob
+
+    if [ -z "${newest}" ]; then
+        msg "ERROR: ${label} artifact not found."
+        return 1
+    fi
+
+    cp -a "${newest}" "${dest_dir}/"
+    msg "Selected ${label}: $(basename "${newest}")"
+}
+
+copy_newest_matching_artifact_optional() {
+    local dest_dir="$1"
+    local label="$2"
+    shift 2
+
+    if ! copy_newest_matching_artifact "${dest_dir}" "${label}" "$@" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    copy_newest_matching_artifact "${dest_dir}" "${label}" "$@"
+}
+
+has_target_bsp_artifacts() {
+    local kernel_flavor uboot_prefix
+    kernel_flavor="$(branch_kernel_deb_flavor)"
+    uboot_prefix="$(branch_uboot_deb_prefix)"
+
+    ls "${BSP_DIR}/linux-image-${kernel_flavor}_"*.deb >/dev/null 2>&1 && \
+    ls "${BSP_DIR}/linux-dtb-${kernel_flavor}_"*.deb >/dev/null 2>&1 && \
+    ls "${BSP_DIR}/${uboot_prefix}_"*.deb >/dev/null 2>&1
+}
+
+populate_tmp_bsp_dir() {
+    local kernel_flavor uboot_prefix bsp_cli_prefix
+    kernel_flavor="$(branch_kernel_deb_flavor)"
+    uboot_prefix="$(branch_uboot_deb_prefix)"
+    bsp_cli_prefix="$(branch_bsp_cli_deb_prefix)"
+
+    copy_newest_matching_artifact "${TMP_BSP_DIR}" "kernel image" \
+        "output/debs/linux-image-${kernel_flavor}_"*.deb
+    copy_newest_matching_artifact "${TMP_BSP_DIR}" "kernel dtb" \
+        "output/debs/linux-dtb-${kernel_flavor}_"*.deb
+    copy_newest_matching_artifact "${TMP_BSP_DIR}" "u-boot" \
+        "output/debs/${uboot_prefix}_"*.deb
+    copy_newest_matching_artifact_optional "${TMP_BSP_DIR}" "kernel headers" \
+        "output/debs/linux-headers-${kernel_flavor}_"*.deb
+    copy_newest_matching_artifact_optional "${TMP_BSP_DIR}" "kernel libc headers" \
+        "output/debs/linux-libc-dev-${kernel_flavor}_"*.deb
+    copy_newest_matching_artifact_optional "${TMP_BSP_DIR}" "bsp cli" \
+        "output/debs/${bsp_cli_prefix}_"*.deb
+    copy_newest_matching_artifact_optional "${TMP_BSP_DIR}" "firmware" \
+        "output/debs/armbian-firmware_"*.deb \
+        "output/debs/linux-firmware_"*.deb
 }
 
 set_kernel_config_not_set() {
@@ -538,19 +643,14 @@ BSP_INPUT_HASH="$(calc_bsp_input_hash)"
 BSP_STAMP="${BSP_DIR}/.bsp-input-hash"
 
 if [ "${FORCE_BSP_REBUILD}" != "yes" ] && \
-   ls "${BSP_DIR}"/linux-image-*.deb >/dev/null 2>&1 && \
-   ls "${BSP_DIR}"/linux-dtb-*.deb >/dev/null 2>&1 && \
-   ls "${BSP_DIR}"/*u-boot*.deb >/dev/null 2>&1 && \
+   has_target_bsp_artifacts && \
    [ -f "${BSP_STAMP}" ] && \
    [ "$(cat "${BSP_STAMP}")" = "${BSP_INPUT_HASH}" ]; then
     msg "Using cached BSP debs: ${BSP_DIR}"
     exit 0
 fi
 
-if [ "${FORCE_BSP_REBUILD}" != "yes" ] && \
-   ls "${BSP_DIR}"/linux-image-*.deb >/dev/null 2>&1 && \
-   ls "${BSP_DIR}"/linux-dtb-*.deb >/dev/null 2>&1 && \
-   ls "${BSP_DIR}"/*u-boot*.deb >/dev/null 2>&1; then
+if [ "${FORCE_BSP_REBUILD}" != "yes" ] && has_target_bsp_artifacts; then
     msg "BSP cache exists but input hash changed or stamp is missing; rebuilding BSP."
 fi
 
@@ -678,27 +778,7 @@ if [ "${BUILD_EXIT}" -ne 0 ]; then
     exit "${BUILD_EXIT}"
 fi
 
-shopt -s nullglob
-cp output/debs/*.deb "${TMP_BSP_DIR}/" || true
-shopt -u nullglob
-
-if ! ls "${TMP_BSP_DIR}"/linux-image-*.deb >/dev/null 2>&1; then
-    msg "ERROR: linux-image deb not found in ${TMP_BSP_DIR}."
-    rm -rf "${TMP_BSP_DIR}"
-    exit 1
-fi
-
-if ! ls "${TMP_BSP_DIR}"/linux-dtb-*.deb >/dev/null 2>&1; then
-    msg "ERROR: linux-dtb deb not found in ${TMP_BSP_DIR}."
-    rm -rf "${TMP_BSP_DIR}"
-    exit 1
-fi
-
-if ! ls "${TMP_BSP_DIR}"/*u-boot*.deb >/dev/null 2>&1; then
-    msg "ERROR: u-boot deb not found in ${TMP_BSP_DIR}."
-    rm -rf "${TMP_BSP_DIR}"
-    exit 1
-fi
+populate_tmp_bsp_dir
 
 rm -rf "${BSP_DIR:?}"/*
 cp -a "${TMP_BSP_DIR}/." "${BSP_DIR}/"

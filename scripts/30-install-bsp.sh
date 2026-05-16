@@ -110,9 +110,23 @@ ${SUDO} chroot "${ROOTFS_DIR}" /bin/bash -e <<'CHROOT'
 export DEBIAN_FRONTEND=noninteractive
 shopt -s nullglob
 
-DEBS=(/tmp/bsp/linux-image-*.deb /tmp/bsp/linux-dtb-*.deb)
+branch_kernel_flavor() {
+  case "${BRANCH}" in
+    vendor) printf '%s\n' "vendor-rk35xx" ;;
+    current) printf '%s\n' "current-rockchip64" ;;
+    edge) printf '%s\n' "edge-rockchip64" ;;
+    *)
+      echo "ERROR: unsupported BRANCH inside BSP install: ${BRANCH}"
+      exit 1
+      ;;
+  esac
+}
+
+KERNEL_FLAVOR="$(branch_kernel_flavor)"
+
+DEBS=(/tmp/bsp/linux-image-${KERNEL_FLAVOR}_*.deb /tmp/bsp/linux-dtb-${KERNEL_FLAVOR}_*.deb)
 if [ ${#DEBS[@]} -eq 0 ]; then
-  echo "ERROR: no linux-image/linux-dtb debs found in /tmp/bsp"
+  echo "ERROR: no linux-image/linux-dtb debs found in /tmp/bsp for ${KERNEL_FLAVOR}"
   exit 1
 fi
 
