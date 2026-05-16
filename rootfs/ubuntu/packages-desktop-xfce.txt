@@ -10,7 +10,8 @@ xfce4-terminal
 gvfs
 udisks2
 upower
-policykit-1
+polkitd
+pkexec
 fonts-noto-core
 fonts-noto-cjk
 fonts-noto-color-emoji
