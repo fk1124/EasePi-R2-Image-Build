@@ -261,6 +261,118 @@ exec "\$HOME/.xinitrc"
 EOF_SKEL_XSESSION
 }
 
+install_desktop_grow_rootfs_service() {
+    [ "${IMAGE_TYPE}" = "desktop" ] || return 0
+
+    ${SUDO} mkdir -p "${ROOTFS_DIR}/usr/local/sbin" "${ROOTFS_DIR}/etc/systemd/system"
+
+    ${SUDO} tee "${ROOTFS_DIR}/usr/local/sbin/easepi-r2-grow-rootfs" >/dev/null <<'EOF_GROW_ROOTFS_SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+
+STAMP="/var/lib/easepi-r2/grow-rootfs.done"
+SERVICE="easepi-r2-grow-rootfs.service"
+
+log() {
+    printf 'easepi-r2-grow-rootfs: %s\n' "$*"
+}
+
+finish() {
+    mkdir -p "$(dirname "${STAMP}")"
+    touch "${STAMP}"
+    systemctl disable "${SERVICE}" >/dev/null 2>&1 || true
+}
+
+[ ! -e "${STAMP}" ] || exit 0
+
+if ! command -v growpart >/dev/null 2>&1; then
+    log "growpart not found"
+    exit 1
+fi
+
+root_source="$(findmnt -no SOURCE / | head -n1 || true)"
+root_dev="$(readlink -f "${root_source}" 2>/dev/null || true)"
+
+if [ -z "${root_dev}" ] || [ ! -b "${root_dev}" ]; then
+    root_majmin="$(findmnt -no MAJ:MIN / | head -n1 || true)"
+    if [ -n "${root_majmin}" ] && [ -e "/dev/block/${root_majmin}" ]; then
+        root_dev="$(readlink -f "/dev/block/${root_majmin}")"
+    fi
+fi
+
+if [ -z "${root_dev}" ] || [ ! -b "${root_dev}" ]; then
+    log "cannot resolve root block device from ${root_source:-unknown}"
+    exit 1
+fi
+
+disk_name="$(lsblk -no PKNAME "${root_dev}" | head -n1 | tr -d '[:space:]')"
+part_num="$(lsblk -no PARTN "${root_dev}" | head -n1 | tr -d '[:space:]')"
+
+if [ -z "${disk_name}" ] || [ -z "${part_num}" ]; then
+    log "root device ${root_dev} is not a plain disk partition"
+    exit 1
+fi
+
+disk="/dev/${disk_name}"
+if [ ! -b "${disk}" ]; then
+    log "parent disk ${disk} not found"
+    exit 1
+fi
+
+before_bytes="$(blockdev --getsize64 "${root_dev}" 2>/dev/null || printf '0')"
+disk_bytes="$(blockdev --getsize64 "${disk}" 2>/dev/null || printf '0')"
+log "expanding ${root_dev} on ${disk} to fill ${disk_bytes} bytes"
+
+set +e
+grow_output="$(growpart "${disk}" "${part_num}" 2>&1)"
+grow_rc=$?
+set -e
+
+if [ -n "${grow_output}" ]; then
+    printf '%s\n' "${grow_output}"
+fi
+
+if [ "${grow_rc}" -ne 0 ]; then
+    case "${grow_output}" in
+        *NOCHANGE*) ;;
+        *)
+            log "growpart failed"
+            exit "${grow_rc}"
+            ;;
+    esac
+fi
+
+partx -u "${disk}" >/dev/null 2>&1 || true
+blockdev --rereadpt "${disk}" >/dev/null 2>&1 || true
+udevadm settle >/dev/null 2>&1 || true
+
+resize2fs "${root_dev}"
+
+after_bytes="$(blockdev --getsize64 "${root_dev}" 2>/dev/null || printf '0')"
+log "root partition size: ${before_bytes} -> ${after_bytes} bytes"
+
+finish
+EOF_GROW_ROOTFS_SCRIPT
+
+    ${SUDO} chmod +x "${ROOTFS_DIR}/usr/local/sbin/easepi-r2-grow-rootfs"
+
+    ${SUDO} tee "${ROOTFS_DIR}/etc/systemd/system/easepi-r2-grow-rootfs.service" >/dev/null <<'EOF_GROW_ROOTFS_SERVICE'
+[Unit]
+Description=Grow root filesystem to fill storage
+After=local-fs.target systemd-udevd.service
+Before=multi-user.target
+ConditionPathExists=!/var/lib/easepi-r2/grow-rootfs.done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/easepi-r2-grow-rootfs
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target
+EOF_GROW_ROOTFS_SERVICE
+}
+
 ${SUDO} mkdir -p "${ROOTFS_DIR}/tmp/bsp"
 ${SUDO} cp "${BSP_DIR}"/*.deb "${ROOTFS_DIR}/tmp/bsp/"
 stage_vendor_libmali
@@ -323,6 +435,7 @@ if [ -d "${REPO_DIR}/userpatches/overlay/easepi-r2-peripherals" ]; then
 fi
 write_gpu_profile
 configure_desktop_profile
+install_desktop_grow_rootfs_service
 
 # Basic system identity and optional account configuration.
 ${SUDO} tee "${ROOTFS_DIR}/etc/hostname" >/dev/null <<EOF_HOST
@@ -514,6 +627,10 @@ rm -f /run/systemd/network/*netplan*.network 2>/dev/null || true
 systemctl enable bluetooth-hciattach.service 2>/dev/null || true
 systemctl enable ir-keymap.service 2>/dev/null || true
 chmod +x /usr/local/sbin/bluetooth-hciattach.sh 2>/dev/null || true
+
+if [ "${IMAGE_TYPE}" = "desktop" ]; then
+  systemctl enable easepi-r2-grow-rootfs.service 2>/dev/null || true
+fi
 
 if [ -n "${EASEPI_R2_DESKTOP_PROFILE}" ] && [ "${IMAGE_TYPE}" = "desktop" ]; then
   if [ -n "${IMAGE_USER}" ] && id -u "${IMAGE_USER}" >/dev/null 2>&1; then

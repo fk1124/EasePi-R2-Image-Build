@@ -102,6 +102,12 @@ case "${IMAGE_TYPE}" in
             desktop_packages="${REPO_DIR}/rootfs/${DIST}/packages-desktop-${EASEPI_R2_DESKTOP_PROFILE}.txt"
         fi
         ${SUDO} cp "${desktop_packages}" "${ROOTFS_DIR}/tmp/packages-extra.txt"
+        ${SUDO} tee -a "${ROOTFS_DIR}/tmp/packages-extra.txt" >/dev/null <<'EOF_DESKTOP_GROWROOT'
+
+cloud-guest-utils
+fdisk
+e2fsprogs
+EOF_DESKTOP_GROWROOT
         ;;
 esac
 
