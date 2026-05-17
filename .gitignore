@@ -5,6 +5,7 @@
 *.img.xz
 *.sha
 *.log
+/userpatches/overlay/easepi-r2-peripherals/root/*.sh
 
 # Editor / OS
 .DS_Store

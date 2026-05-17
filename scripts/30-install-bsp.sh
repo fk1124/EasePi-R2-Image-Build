@@ -10,10 +10,12 @@ DIST="${DIST:-debian}"
 RELEASE="${RELEASE:-trixie}"
 BRANCH="${BRANCH:-current}"
 IMAGE_TYPE="${IMAGE_TYPE:-minimal}"
+WORK_DIR="${WORK_DIR:-${REPO_DIR}/work}"
 ROOTFS_NAME="${ROOTFS_NAME:-${DIST}-${RELEASE}-${BRANCH}-${IMAGE_TYPE}}"
 ROOTFS_DIR="${REPO_DIR}/output/rootfs/${ROOTFS_NAME}"
 BSP_NAME="${BSP_NAME:-${DIST}-${RELEASE}-${BRANCH}}"
 BSP_DIR="${REPO_DIR}/output/bsp/${BSP_NAME}"
+PERIPHERAL_OVERLAY_DIR="${WORK_DIR}/userpatches.generated/overlay/easepi-r2-peripherals"
 
 CREATE_USER="${CREATE_USER:-no}"
 IMAGE_USER="${IMAGE_USER:-}"
@@ -124,6 +126,14 @@ fix_firmware_aliases_in_rootfs() {
         ${SUDO} ln -sfn brcmfmac43455-sdio.txt "${fw_dir}/brcmfmac43455-sdio.linkease,easepi-r2.txt"
     [ -f "${fw_dir}/brcmfmac43455-sdio.clm_blob" ] && \
         ${SUDO} ln -sfn brcmfmac43455-sdio.clm_blob "${fw_dir}/brcmfmac43455-sdio.linkease,easepi-r2.clm_blob"
+}
+
+prepare_peripheral_overlay() {
+    bash "${REPO_DIR}/scripts/sync-root-scripts.sh"
+
+    rm -rf "${PERIPHERAL_OVERLAY_DIR}"
+    mkdir -p "${PERIPHERAL_OVERLAY_DIR}"
+    rsync -a "${REPO_DIR}/userpatches/overlay/easepi-r2-peripherals/" "${PERIPHERAL_OVERLAY_DIR}/"
 }
 
 write_gpu_profile() {
@@ -430,8 +440,9 @@ trap - EXIT
 decompress_zst_firmware_in_rootfs "${ROOTFS_DIR}"
 
 # Copy EasePi-R2 peripheral overlay directly, because this image does not rely on a full Armbian userspace.
-if [ -d "${REPO_DIR}/userpatches/overlay/easepi-r2-peripherals" ]; then
-    ${SUDO} rsync -a "${REPO_DIR}/userpatches/overlay/easepi-r2-peripherals/" "${ROOTFS_DIR}/"
+prepare_peripheral_overlay
+if [ -d "${PERIPHERAL_OVERLAY_DIR}" ]; then
+    ${SUDO} rsync -a "${PERIPHERAL_OVERLAY_DIR}/" "${ROOTFS_DIR}/"
     # eth0-eth3 are aligned by /usr/local/sbin/easepi-r2-eth-order using
     # /proc/device-tree/eth_order. Remove legacy direct .link renames to avoid
     # eth1 <-> eth2 "File exists" conflicts.
@@ -441,6 +452,7 @@ if [ -d "${REPO_DIR}/userpatches/overlay/easepi-r2-peripherals" ]; then
     ${SUDO} chmod +x "${ROOTFS_DIR}/usr/local/sbin/easepi-r2-eth-order" 2>/dev/null || true
     ${SUDO} chmod +x "${ROOTFS_DIR}/usr/local/sbin/bluetooth-hciattach.sh" 2>/dev/null || true
 fi
+bash "${REPO_DIR}/scripts/write-build-time-seed.sh" "${ROOTFS_DIR}"
 write_gpu_profile
 configure_desktop_profile
 install_desktop_grow_rootfs_service

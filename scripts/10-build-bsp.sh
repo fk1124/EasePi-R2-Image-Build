@@ -596,6 +596,8 @@ set_kernel_config_value() {
 }
 
 prepare_kernel_configs() {
+    bash "${REPO_DIR}/scripts/sync-root-scripts.sh"
+
     rm -rf "${GENERATED_USERPATCHES_DIR}"
     mkdir -p "${GENERATED_USERPATCHES_DIR}"
     rsync -a "${REPO_DIR}/userpatches/" "${GENERATED_USERPATCHES_DIR}/"

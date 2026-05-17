@@ -90,6 +90,8 @@ if [ ! -d "${ROOTFS_DIR}/boot" ]; then
     exit 1
 fi
 
+bash "${REPO_DIR}/scripts/write-build-time-seed.sh" "${ROOTFS_DIR}"
+
 mkdir -p "${IMAGE_DIR}" "${TMP_DIR}"
 rm -f "${IMG}" "${IMG}.xz" "${IMG}.sha" "${IMG}.xz.sha256"
 

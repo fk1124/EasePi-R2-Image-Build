@@ -36,6 +36,77 @@ EOF_GPU_MODPROBE_MAINLINE
 	fi
 }
 
+function easepi_r2_write_build_time_seed() {
+	local build_epoch build_utc build_local
+
+	build_epoch="${EASEPI_R2_BUILD_EPOCH:-$(date -u +%s)}"
+	build_utc="$(date -u -d "@${build_epoch}" '+%Y-%m-%d %H:%M:%S UTC')"
+	build_local="$(TZ="${EASEPI_R2_BUILD_TZ:-Asia/Shanghai}" date -d "@${build_epoch}" '+%Y-%m-%d %H:%M:%S %Z')"
+
+	mkdir -p \
+		"${SDCARD}/etc" \
+		"${SDCARD}/usr/local/sbin" \
+		"${SDCARD}/etc/systemd/system/sysinit.target.wants" \
+		"${SDCARD}/var/lib/systemd/timesync"
+
+	cat > "${SDCARD}/etc/easepi-r2-build-time" <<EOF_BUILD_TIME
+BUILD_EPOCH_UTC=${build_epoch}
+BUILD_TIME_UTC=${build_utc}
+BUILD_TIME_LOCAL=${build_local}
+EOF_BUILD_TIME
+
+	cat > "${SDCARD}/etc/fake-hwclock.data" <<EOF_FAKE_HWCLOCK
+$(date -u -d "@${build_epoch}" '+%Y-%m-%d %H:%M:%S')
+EOF_FAKE_HWCLOCK
+
+	touch -d "@${build_epoch}" "${SDCARD}/var/lib/systemd/timesync/clock" 2>/dev/null || true
+
+	cat > "${SDCARD}/usr/local/sbin/easepi-r2-seed-clock" <<'EOF_SEED_CLOCK'
+#!/usr/bin/env bash
+set -euo pipefail
+
+seed_file="/etc/easepi-r2-build-time"
+[ -f "${seed_file}" ] || exit 0
+
+build_epoch="$(awk -F= '$1 == "BUILD_EPOCH_UTC" { print $2 }' "${seed_file}" | tr -cd '0-9' | head -c 16)"
+[ -n "${build_epoch}" ] || exit 0
+
+now_epoch="$(date -u +%s 2>/dev/null || printf '0')"
+case "${now_epoch}" in
+	''|*[!0-9]*) now_epoch=0 ;;
+esac
+
+if [ "${now_epoch}" -lt "${build_epoch}" ]; then
+	date -u -s "@${build_epoch}" >/dev/null 2>&1 || exit 0
+	logger -t easepi-r2-seed-clock "system clock seeded from image build time: ${build_epoch}" 2>/dev/null || true
+fi
+
+mkdir -p /var/lib/systemd/timesync
+touch -d "@${build_epoch}" /var/lib/systemd/timesync/clock 2>/dev/null || true
+EOF_SEED_CLOCK
+
+	chmod 0755 "${SDCARD}/usr/local/sbin/easepi-r2-seed-clock"
+
+	cat > "${SDCARD}/etc/systemd/system/easepi-r2-seed-clock.service" <<'EOF_SEED_CLOCK_SERVICE'
+[Unit]
+Description=Seed system clock from EasePi-R2 image build time
+DefaultDependencies=no
+After=local-fs.target
+Before=sysinit.target time-set.target time-sync.target systemd-timesyncd.service chrony.service chronyd.service ntp.service
+ConditionPathExists=/etc/easepi-r2-build-time
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/easepi-r2-seed-clock
+
+[Install]
+WantedBy=sysinit.target
+EOF_SEED_CLOCK_SERVICE
+
+	ln -sfn ../easepi-r2-seed-clock.service \
+		"${SDCARD}/etc/systemd/system/sysinit.target.wants/easepi-r2-seed-clock.service"
+}
+
 function easepi_r2_stage_vendor_libmali() {
 	[[ "${BRANCH:-current}" == "vendor" ]] || return 0
 	[[ "${EASEPI_R2_VENDOR_GPU_STACK}" == "libmali" ]] || return 0
@@ -83,6 +154,7 @@ function pre_customize_image__copy_easepi_r2_peripheral_files() {
 	rm -f "${SDCARD}/usr/local/sbin/easepi-r2-gpu-check"
 	chmod +x "${SDCARD}/usr/local/sbin/easepi-r2-eth-order" 2>/dev/null || true
 	easepi_r2_write_gpu_profile
+	easepi_r2_write_build_time_seed
 
 	if [[ -f "${SDCARD}/usr/local/sbin/bluetooth-hciattach.sh" ]]; then
 		chmod +x "${SDCARD}/usr/local/sbin/bluetooth-hciattach.sh"
@@ -321,4 +393,5 @@ function post_customize_image__enable_easepi_r2_peripheral_services() {
 	chroot_sdcard systemctl mask systemd-networkd-wait-online.service || true
 
 	chroot_sdcard systemctl enable bluetooth.service || true
+	easepi_r2_write_build_time_seed
 }
