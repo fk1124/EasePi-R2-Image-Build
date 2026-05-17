@@ -1,13 +1,5 @@
 # EasePi-R2 Image Build
-
-给 **EasePi-R2 / RK3588** 统一整理多系统镜像构建入口。
-
-当前已经接入：
-
-- Armbian 原生镜像：复用 Armbian build 生成 U-Boot / Kernel / DTB / rootfs / 分区镜像
-- Debian / Ubuntu BSP 打包镜像：复用 Armbian build 生成 BSP，本项目生成 rootfs 并打包成可刷写镜像
-
-后续会按矩阵逐步接入 FNOS、Alpine Linux、Fedora、Arch Linux ARM、Kali ARM、OpenWrt。
+**EasePi-R2** 多系统镜像构建项目。
 
 ## 基础环境要求
 
