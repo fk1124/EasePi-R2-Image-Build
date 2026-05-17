@@ -171,7 +171,7 @@ function easepi_r2_fix_brcm_firmware_aliases() {
 	local CY_FW_DIR="${SDCARD}/lib/firmware/cypress"
 	local RTL_FW_DIR="${SDCARD}/lib/firmware/rtl_nic"
 	local MALI_FW_DIR="${SDCARD}/lib/firmware/arm/mali/arch10.8"
-	local zst="" base="" preferred_txt=""
+	local zst="" base="" preferred_txt="" preferred_hcd="" hcd_target=""
 
 	[[ -d "${FW_DIR}" ]] || return 0
 
@@ -214,6 +214,28 @@ function easepi_r2_fix_brcm_firmware_aliases() {
 		ln -sfn "brcmfmac43455-sdio.txt" "${FW_DIR}/brcmfmac43455-sdio.linkease,easepi-r2.txt"
 	[[ -f "${FW_DIR}/brcmfmac43455-sdio.clm_blob" ]] && \
 		ln -sfn "brcmfmac43455-sdio.clm_blob" "${FW_DIR}/brcmfmac43455-sdio.linkease,easepi-r2.clm_blob"
+
+	if [[ ! -e "${FW_DIR}/BCM4345C0.hcd" ]]; then
+		for preferred_hcd in \
+			"${FW_DIR}/BCM4345C0_003.001.025.0162.0000_Generic_UART_37_4MHz_wlbga_ref_iLNA_iTR_eLG.hcd" \
+			"${FW_DIR}/BCM4345C0.raspberrypi,4-compute-module.hcd" \
+			"${FW_DIR}/BCM4345C0.firefly,rk3566-roc-pc.hcd" \
+			"${FW_DIR}/BCM4345C0.radxa,zero2.hcd" \
+			"${FW_DIR}/BCM4345C0.amlogic,sm1.hcd" \
+			"${SDCARD}/lib/firmware/BCM4345C0.hcd"; do
+			[[ -f "${preferred_hcd}" ]] || continue
+			case "${preferred_hcd}" in
+				"${FW_DIR}"/*) hcd_target="$(basename "${preferred_hcd}")" ;;
+				"${SDCARD}/lib/firmware/"*) hcd_target="../$(basename "${preferred_hcd}")" ;;
+				*) hcd_target="${preferred_hcd}" ;;
+			esac
+			ln -sfn "${hcd_target}" "${FW_DIR}/BCM4345C0.hcd"
+			break
+		done
+	fi
+
+	[[ -e "${FW_DIR}/BCM4345C0.hcd" ]] && \
+		ln -sfn "BCM4345C0.hcd" "${FW_DIR}/BCM4345C0.linkease,easepi-r2.hcd"
 }
 
 function easepi_r2_tune_vendor_bootenv() {
@@ -339,6 +361,12 @@ function post_customize_image__enable_easepi_r2_peripheral_services() {
 		-o Dpkg::Options::=--force-confold \
 		"${EASEPI_R2_COMMON_RUNTIME[@]}" \
 		"${EASEPI_R2_GPU_RUNTIME[@]}" || true
+	if ! chroot_sdcard apt-get install -y --no-install-recommends \
+		-o Dpkg::Options::=--force-confdef \
+		-o Dpkg::Options::=--force-confold \
+		bluez-firmware; then
+		display_alert "EasePi-R2" "Optional bluez-firmware package not available" "wrn"
+	fi
 	if [[ -f "${R2_NFT_BACKUP}" ]]; then
 		mv "${R2_NFT_BACKUP}" "${SDCARD}/etc/nftables.conf"
 	fi

@@ -99,6 +99,7 @@ fix_firmware_aliases_in_rootfs() {
     local fw_dir="${root}/lib/firmware/brcm"
     local cy_fw_dir="${root}/lib/firmware/cypress"
     local candidate=""
+    local hcd_target=""
 
     [ -d "${fw_dir}" ] || return 0
 
@@ -126,6 +127,28 @@ fix_firmware_aliases_in_rootfs() {
         ${SUDO} ln -sfn brcmfmac43455-sdio.txt "${fw_dir}/brcmfmac43455-sdio.linkease,easepi-r2.txt"
     [ -f "${fw_dir}/brcmfmac43455-sdio.clm_blob" ] && \
         ${SUDO} ln -sfn brcmfmac43455-sdio.clm_blob "${fw_dir}/brcmfmac43455-sdio.linkease,easepi-r2.clm_blob"
+
+    if [ ! -e "${fw_dir}/BCM4345C0.hcd" ]; then
+        for candidate in \
+            "${fw_dir}/BCM4345C0_003.001.025.0162.0000_Generic_UART_37_4MHz_wlbga_ref_iLNA_iTR_eLG.hcd" \
+            "${fw_dir}/BCM4345C0.raspberrypi,4-compute-module.hcd" \
+            "${fw_dir}/BCM4345C0.firefly,rk3566-roc-pc.hcd" \
+            "${fw_dir}/BCM4345C0.radxa,zero2.hcd" \
+            "${fw_dir}/BCM4345C0.amlogic,sm1.hcd" \
+            "${root}/lib/firmware/BCM4345C0.hcd"; do
+            [ -f "${candidate}" ] || continue
+            case "${candidate}" in
+                "${fw_dir}"/*) hcd_target="$(basename "${candidate}")" ;;
+                "${root}/lib/firmware/"*) hcd_target="../$(basename "${candidate}")" ;;
+                *) hcd_target="${candidate}" ;;
+            esac
+            ${SUDO} ln -sfn "${hcd_target}" "${fw_dir}/BCM4345C0.hcd"
+            break
+        done
+    fi
+
+    [ -e "${fw_dir}/BCM4345C0.hcd" ] && \
+        ${SUDO} ln -sfn BCM4345C0.hcd "${fw_dir}/BCM4345C0.linkease,easepi-r2.hcd"
 }
 
 prepare_peripheral_overlay() {
@@ -606,6 +629,14 @@ if ! command -v dnsmasq >/dev/null 2>&1 || ! command -v nft >/dev/null 2>&1; the
   fi
 fi
 
+if [ ! -e /lib/firmware/brcm/BCM4345C0.hcd ] && [ ! -e /lib/firmware/BCM4345C0.hcd ]; then
+  if apt-get update; then
+    apt_install_optional bluez-firmware
+  else
+    echo "WARN: optional package index update failed while preparing bluez-firmware"
+  fi
+fi
+
 if [ "${BRANCH}" = "vendor" ] && [ "${EASEPI_R2_VENDOR_GPU_STACK}" = "libmali" ] && [ -f /tmp/easepi-r2-libmali.deb ]; then
   apt-get update
   apt_install_required libdrm2 libgbm1 ocl-icd-libopencl1 ca-certificates
@@ -644,6 +675,25 @@ if [ -d "$FW_DIR" ]; then
   [ -f "$FW_DIR/brcmfmac43455-sdio.bin" ] && ln -sfn brcmfmac43455-sdio.bin "$FW_DIR/brcmfmac43455-sdio.linkease,easepi-r2.bin"
   [ -f "$FW_DIR/brcmfmac43455-sdio.txt" ] && ln -sfn brcmfmac43455-sdio.txt "$FW_DIR/brcmfmac43455-sdio.linkease,easepi-r2.txt"
   [ -f "$FW_DIR/brcmfmac43455-sdio.clm_blob" ] && ln -sfn brcmfmac43455-sdio.clm_blob "$FW_DIR/brcmfmac43455-sdio.linkease,easepi-r2.clm_blob"
+  if [ ! -e "$FW_DIR/BCM4345C0.hcd" ]; then
+    for candidate in \
+      "$FW_DIR/BCM4345C0_003.001.025.0162.0000_Generic_UART_37_4MHz_wlbga_ref_iLNA_iTR_eLG.hcd" \
+      "$FW_DIR/BCM4345C0.raspberrypi,4-compute-module.hcd" \
+      "$FW_DIR/BCM4345C0.firefly,rk3566-roc-pc.hcd" \
+      "$FW_DIR/BCM4345C0.radxa,zero2.hcd" \
+      "$FW_DIR/BCM4345C0.amlogic,sm1.hcd" \
+      "/lib/firmware/BCM4345C0.hcd"; do
+      [ -f "$candidate" ] || continue
+      case "$candidate" in
+        "$FW_DIR"/*) hcd_target="$(basename "$candidate")" ;;
+        /lib/firmware/*) hcd_target="../$(basename "$candidate")" ;;
+        *) hcd_target="$candidate" ;;
+      esac
+      ln -sfn "$hcd_target" "$FW_DIR/BCM4345C0.hcd"
+      break
+    done
+  fi
+  [ -e "$FW_DIR/BCM4345C0.hcd" ] && ln -sfn BCM4345C0.hcd "$FW_DIR/BCM4345C0.linkease,easepi-r2.hcd"
 fi
 # EasePi-R2 is shipped as a router base: systemd-networkd owns the network.
 systemctl disable NetworkManager 2>/dev/null || true
