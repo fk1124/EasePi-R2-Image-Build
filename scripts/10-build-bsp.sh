@@ -3,6 +3,8 @@ set -euo pipefail
 
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 SUDO="${SUDO:-sudo}"
+WORK_DIR="${WORK_DIR:-${REPO_DIR}/work}"
+GENERATED_USERPATCHES_DIR="${WORK_DIR}/userpatches.generated"
 
 BOARD="${BOARD:-easepi-r2}"
 DIST="${DIST:-debian}"
@@ -202,8 +204,8 @@ locate_build_dir() {
         printf '%s\n' "$(cd "${REPO_DIR}/../build" && pwd)"
     elif [ -d "${HOME}/rk3588_build/build" ] && [ -f "${HOME}/rk3588_build/build/compile.sh" ]; then
         printf '%s\n' "${HOME}/rk3588_build/build"
-    elif [ -d "${REPO_DIR}/work/armbian-build" ] && [ -f "${REPO_DIR}/work/armbian-build/compile.sh" ]; then
-        printf '%s\n' "${REPO_DIR}/work/armbian-build"
+    elif [ -d "${WORK_DIR}/armbian-build" ] && [ -f "${WORK_DIR}/armbian-build/compile.sh" ]; then
+        printf '%s\n' "${WORK_DIR}/armbian-build"
     else
         printf ''
     fi
@@ -378,6 +380,23 @@ clean_broken_cache() {
     # rm -rf cache/memoize/git2info/*
 }
 
+hash_bsp_config_file() {
+    local file="$1"
+
+    case "${file}" in
+        config/boards/*.conf)
+            sed -E \
+                -e '/PACKAGE_LIST/d' \
+                -e '/PACKAGES=/d' \
+                -e '/ENABLE_EXTENSIONS=/d' \
+                "${file}" | sha256sum
+            ;;
+        *)
+            sha256sum "${file}"
+            ;;
+    esac
+}
+
 trust_existing_git_caches() {
     if ! command -v git >/dev/null 2>&1; then
         return 0
@@ -409,18 +428,40 @@ trust_existing_git_caches() {
 
 calc_bsp_input_hash() {
     (
-        printf 'DIST=%s\n' "${DIST}"
-        printf 'RELEASE=%s\n' "${RELEASE}"
+        shopt -s nullglob
+        printf 'BOARD=%s\n' "${BOARD}"
         printf 'BRANCH=%s\n' "${BRANCH}"
         printf 'ARMBIAN_BRANCH=%s\n' "${ARMBIAN_BRANCH}"
         printf 'KERNEL_PROFILE=%s\n' "${EASEPI_R2_KERNEL_PROFILE:-default}"
-        cd "${REPO_DIR}"
-        find build-bsp-image.sh scripts "rootfs/${DIST}" -type f -print0 2>/dev/null | sort -z | while IFS= read -r -d '' f; do
-            sha256sum "$f"
-        done
-        find userpatches -type f -print0 2>/dev/null | sort -z | while IFS= read -r -d '' f; do
-            sha256sum "$f"
-        done
+        printf 'KERNEL_GIT=%s\n' "${KERNEL_GIT}"
+        printf 'REGIONAL_MIRROR=%s\n' "${REGIONAL_MIRROR:-}"
+        printf 'MAINLINE_MIRROR=%s\n' "${MAINLINE_MIRROR:-}"
+        printf 'UBOOT_MIRROR=%s\n' "${UBOOT_MIRROR:-}"
+        printf 'GITHUB_SOURCE=%s\n' "${GITHUB_SOURCE:-}"
+        printf 'GITHUB_MIRROR=%s\n' "${GITHUB_MIRROR:-}"
+        printf 'ORAS_VERSION=%s\n' "${ORAS_VERSION}"
+        printf 'BUILD_ONLY=%s\n' "u-boot,kernel,armbian-bsp"
+        printf 'KERNEL_CONFIGURE=%s\n' "no"
+        if [ "${EASEPI_R2_KERNEL_PROFILE}" = "linux7" ]; then
+            printf 'KERNEL_MAJOR_MINOR=%s\n' "7.0"
+            printf 'KERNELBRANCH=%s\n' "branch:linux-7.0.y"
+            printf 'KERNELPATCHDIR=%s\n' "archive/rockchip64-7.0"
+        fi
+        if [ -d "${BUILD_DIR}/.git" ]; then
+            printf 'ARMBIAN_BUILD_HEAD=%s\n' "$(git -C "${BUILD_DIR}" rev-parse HEAD 2>/dev/null || true)"
+        fi
+        if [ -d "${GENERATED_USERPATCHES_DIR}" ]; then
+            cd "${GENERATED_USERPATCHES_DIR}"
+            for f in *.config; do
+                hash_bsp_config_file "$f"
+            done
+            for d in config kernel u-boot; do
+                [ -d "${d}" ] || continue
+                find "${d}" -type f -print0 2>/dev/null | sort -z | while IFS= read -r -d '' f; do
+                    hash_bsp_config_file "$f"
+                done
+            done
+        fi
     ) | sha256sum | awk '{print $1}'
 }
 
@@ -555,20 +596,23 @@ set_kernel_config_value() {
 }
 
 prepare_kernel_configs() {
-    mkdir -p "${REPO_DIR}/userpatches"
+    rm -rf "${GENERATED_USERPATCHES_DIR}"
+    mkdir -p "${GENERATED_USERPATCHES_DIR}"
+    rsync -a "${REPO_DIR}/userpatches/" "${GENERATED_USERPATCHES_DIR}/"
 
-    local cfg src dst found refresh
+    local cfg src repo_dst dst found refresh
     local configs=(
         "linux-rockchip64-current.config"
         "linux-rockchip64-edge.config"
         "linux-rk35xx-vendor.config"
     )
 
-    refresh="${EASEPI_R2_REFRESH_KERNEL_CONFIGS:-no}"
+    refresh="${EASEPI_R2_REFRESH_KERNEL_CONFIG_TEMPLATES:-${EASEPI_R2_REFRESH_KERNEL_CONFIGS:-no}}"
 
     for cfg in "${configs[@]}"; do
         src="${BUILD_DIR}/config/kernel/${cfg}"
-        dst="${REPO_DIR}/userpatches/${cfg}"
+        repo_dst="${REPO_DIR}/userpatches/${cfg}"
+        dst="${GENERATED_USERPATCHES_DIR}/${cfg}"
         found=""
 
         if [ -f "${src}" ]; then
@@ -577,10 +621,15 @@ prepare_kernel_configs() {
             found="$(find "${BUILD_DIR}/config" -type f -name "${cfg}" 2>/dev/null | head -1 || true)"
         fi
 
-        if [ -n "${found}" ] && [ -f "${found}" ] && { [ ! -f "${dst}" ] || [ "${refresh}" = "yes" ]; }; then
+        if [ "${refresh}" = "yes" ] && [ -n "${found}" ] && [ -f "${found}" ]; then
+            mkdir -p "${REPO_DIR}/userpatches"
+            cp -f "${found}" "${repo_dst}"
             cp -f "${found}" "${dst}"
+            msg "Refreshed kernel config template: ${repo_dst}"
         elif [ -f "${dst}" ]; then
-            msg "Reuse existing kernel config: ${dst}"
+            msg "Reuse generated kernel config from repository template: ${dst}"
+        elif [ -n "${found}" ] && [ -f "${found}" ]; then
+            cp -f "${found}" "${dst}"
         else
             msg "WARN: default kernel config not found and user config missing: ${cfg}"
             continue
@@ -631,7 +680,7 @@ prepare_kernel_configs() {
             set_kernel_config_not_set "${dst}" "CONFIG_RTL8852BS"
         fi
 
-        msg "Prepared kernel config: ${dst}"
+        msg "Prepared generated kernel config: ${dst}"
     done
 }
 
@@ -639,9 +688,9 @@ BUILD_DIR="$(locate_build_dir)"
 
 if [ -z "${BUILD_DIR}" ]; then
     msg "Armbian build tree not found; cloning to work/armbian-build ..."
-    mkdir -p "${REPO_DIR}/work"
-    git clone --depth=1 "${ARMBIAN_BUILD_REPO}" "${REPO_DIR}/work/armbian-build"
-    BUILD_DIR="${REPO_DIR}/work/armbian-build"
+    mkdir -p "${WORK_DIR}"
+    git clone --depth=1 "${ARMBIAN_BUILD_REPO}" "${WORK_DIR}/armbian-build"
+    BUILD_DIR="${WORK_DIR}/armbian-build"
 fi
 
 if [ ! -f "${BUILD_DIR}/compile.sh" ]; then
@@ -686,7 +735,7 @@ printf 'GitHub source   : %s\n' "${GITHUB_SOURCE}"
 printf 'Threads         : %s\n' "${CPUTHREADS}"
 printf 'Clean level     : %s\n' "${CLEAN_LEVEL:-default}"
 
-rsync -a --delete "${REPO_DIR}/userpatches/" "${BUILD_DIR}/userpatches/"
+rsync -a --delete "${GENERATED_USERPATCHES_DIR}/" "${BUILD_DIR}/userpatches/"
 
 cd "${BUILD_DIR}"
 

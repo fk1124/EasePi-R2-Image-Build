@@ -286,45 +286,152 @@ fi
 cleanup
 trap - EXIT
 
-# Shrink ext4, then shrink the GPT rootfs partition and the image file so the
-# raw .img footprint tracks the actual data instead of staying at 4 GiB.
-set +e
-LOOP_SHRINK="$(${SUDO} losetup --find --show --partscan "${IMG}")"
-${SUDO} e2fsck -fy "${LOOP_SHRINK}p${ROOT_PART_NUM}" >/dev/null 2>&1
-${SUDO} resize2fs -M "${LOOP_SHRINK}p${ROOT_PART_NUM}" >/dev/null 2>&1
-${SUDO} e2fsck -fy "${LOOP_SHRINK}p${ROOT_PART_NUM}" >/dev/null 2>&1
-MIN_BLOCK_COUNT="$(${SUDO} dumpe2fs -h "${LOOP_SHRINK}p${ROOT_PART_NUM}" 2>/dev/null | awk -F': *' '/Block count:/ {print $2; exit}')"
-MIN_BLOCK_SIZE="$(${SUDO} dumpe2fs -h "${LOOP_SHRINK}p${ROOT_PART_NUM}" 2>/dev/null | awk -F': *' '/Block size:/ {print $2; exit}')"
-ROOT_START_SECTOR="$(parted -sm "${IMG}" unit s print 2>/dev/null | awk -F: -v part="${ROOT_PART_NUM}" '$1 == part {sub(/s$/, "", $2); print $2; exit}')"
-${SUDO} losetup -d "${LOOP_SHRINK}" >/dev/null 2>&1
+# Shrink on a temporary image first. If anything fails, the original image stays
+# unmodified and the unshrunk image is compressed.
+detach_loop_device() {
+    local loop_dev="${1:-}"
+    [ -z "${loop_dev}" ] || ${SUDO} losetup -d "${loop_dev}" >/dev/null 2>&1
+}
 
-if [ -n "${MIN_BLOCK_COUNT}" ] && [ -n "${MIN_BLOCK_SIZE}" ] && [ -n "${ROOT_START_SECTOR}" ]; then
-    ROOT_BYTES=$((MIN_BLOCK_COUNT * MIN_BLOCK_SIZE))
-    ROOT_SECTORS=$(((ROOT_BYTES + 512 - 1) / 512))
-    ROOT_PADDING_SECTORS=$(((64 * 1024 * 1024) / 512))
-    if [ "${ROOT_PADDING_SECTORS}" -lt 131072 ]; then
-        ROOT_PADDING_SECTORS=131072
-    fi
-    ROOT_END_SECTOR=$((ROOT_START_SECTOR + ROOT_SECTORS + ROOT_PADDING_SECTORS - 1))
-    CURRENT_IMAGE_BYTES="$(stat -c%s "${IMG}")"
-    CURRENT_LAST_SECTOR=$(((CURRENT_IMAGE_BYTES / 512) - 1))
-    CURRENT_LAST_USABLE=$((CURRENT_LAST_SECTOR - 33))
-    if [ "${ROOT_END_SECTOR}" -gt "${CURRENT_LAST_USABLE}" ]; then
-        ROOT_END_SECTOR="${CURRENT_LAST_USABLE}"
+cleanup_failed_shrink() {
+    local tmp_img="$1"
+    local loop_dev="${2:-}"
+
+    detach_loop_device "${loop_dev}" || true
+    rm -f "${tmp_img}"
+}
+
+e2fsck_clean_or_corrected() {
+    local dev="$1"
+    local rc=0
+
+    ${SUDO} e2fsck -fy "${dev}" >/dev/null 2>&1 || rc=$?
+    [ "${rc}" -eq 0 ] || [ "${rc}" -eq 1 ]
+}
+
+is_uint() {
+    case "${1:-}" in
+        ''|*[!0-9]*) return 1 ;;
+        *) return 0 ;;
+    esac
+}
+
+shrink_image() {
+    local src_img="$1"
+    local tmp_img="${src_img}.shrink.$$"
+    local loop_dev="" root_dev=""
+    local min_block_count="" min_block_size="" root_start_sector=""
+    local root_bytes root_sectors root_padding_sectors root_end_sector
+    local current_image_bytes current_last_sector current_last_usable
+    local new_image_bytes
+
+    printf 'Shrinking image on temporary copy: %s\n' "${tmp_img}"
+    rm -f "${tmp_img}"
+    if ! cp --sparse=always "${src_img}" "${tmp_img}"; then
+        rm -f "${tmp_img}"
+        return 1
     fi
 
-    ${SUDO} sgdisk --delete="${ROOT_PART_NUM}" "${IMG}" >/dev/null 2>&1
-    ${SUDO} sgdisk --new="${ROOT_PART_NUM}:${ROOT_START_SECTOR}:${ROOT_END_SECTOR}" \
+    if ! loop_dev="$(${SUDO} losetup --find --show --partscan "${tmp_img}")"; then
+        cleanup_failed_shrink "${tmp_img}"
+        return 1
+    fi
+    root_dev="${loop_dev}p${ROOT_PART_NUM}"
+
+    if ! e2fsck_clean_or_corrected "${root_dev}"; then
+        cleanup_failed_shrink "${tmp_img}" "${loop_dev}"
+        return 1
+    fi
+    if ! ${SUDO} resize2fs -M "${root_dev}" >/dev/null 2>&1; then
+        cleanup_failed_shrink "${tmp_img}" "${loop_dev}"
+        return 1
+    fi
+    if ! e2fsck_clean_or_corrected "${root_dev}"; then
+        cleanup_failed_shrink "${tmp_img}" "${loop_dev}"
+        return 1
+    fi
+
+    if ! min_block_count="$(${SUDO} dumpe2fs -h "${root_dev}" 2>/dev/null | awk -F': *' '/Block count:/ {print $2; exit}')"; then
+        cleanup_failed_shrink "${tmp_img}" "${loop_dev}"
+        return 1
+    fi
+    if ! min_block_size="$(${SUDO} dumpe2fs -h "${root_dev}" 2>/dev/null | awk -F': *' '/Block size:/ {print $2; exit}')"; then
+        cleanup_failed_shrink "${tmp_img}" "${loop_dev}"
+        return 1
+    fi
+
+    if ! detach_loop_device "${loop_dev}"; then
+        cleanup_failed_shrink "${tmp_img}" "${loop_dev}"
+        return 1
+    fi
+    loop_dev=""
+
+    if ! root_start_sector="$(parted -sm "${tmp_img}" unit s print 2>/dev/null | awk -F: -v part="${ROOT_PART_NUM}" '$1 == part {sub(/s$/, "", $2); print $2; exit}')"; then
+        cleanup_failed_shrink "${tmp_img}"
+        return 1
+    fi
+    if ! is_uint "${min_block_count}" || ! is_uint "${min_block_size}" || ! is_uint "${root_start_sector}"; then
+        cleanup_failed_shrink "${tmp_img}"
+        return 1
+    fi
+
+    root_bytes=$((min_block_count * min_block_size))
+    root_sectors=$(((root_bytes + 512 - 1) / 512))
+    root_padding_sectors=$(((64 * 1024 * 1024) / 512))
+    if [ "${root_padding_sectors}" -lt 131072 ]; then
+        root_padding_sectors=131072
+    fi
+    root_end_sector=$((root_start_sector + root_sectors + root_padding_sectors - 1))
+    if ! current_image_bytes="$(stat -c%s "${tmp_img}")" || ! is_uint "${current_image_bytes}"; then
+        cleanup_failed_shrink "${tmp_img}"
+        return 1
+    fi
+    current_last_sector=$(((current_image_bytes / 512) - 1))
+    current_last_usable=$((current_last_sector - 33))
+    if [ "${root_end_sector}" -gt "${current_last_usable}" ]; then
+        root_end_sector="${current_last_usable}"
+    fi
+    if [ "${root_end_sector}" -le "${root_start_sector}" ]; then
+        cleanup_failed_shrink "${tmp_img}"
+        return 1
+    fi
+
+    if ! ${SUDO} sgdisk --delete="${ROOT_PART_NUM}" "${tmp_img}" >/dev/null 2>&1; then
+        cleanup_failed_shrink "${tmp_img}"
+        return 1
+    fi
+    if ! ${SUDO} sgdisk --new="${ROOT_PART_NUM}:${root_start_sector}:${root_end_sector}" \
         --typecode="${ROOT_PART_NUM}:8300" \
         --change-name="${ROOT_PART_NUM}:rootfs" \
-        "${IMG}" >/dev/null 2>&1
+        "${tmp_img}" >/dev/null 2>&1; then
+        cleanup_failed_shrink "${tmp_img}"
+        return 1
+    fi
 
-    NEW_IMAGE_BYTES=$(((ROOT_END_SECTOR + 34) * 512))
-    truncate -s "${NEW_IMAGE_BYTES}" "${IMG}"
-    ${SUDO} sgdisk -e "${IMG}" >/dev/null 2>&1
-    ${SUDO} sgdisk -v "${IMG}" >/dev/null 2>&1
+    new_image_bytes=$(((root_end_sector + 34) * 512))
+    if ! truncate -s "${new_image_bytes}" "${tmp_img}"; then
+        cleanup_failed_shrink "${tmp_img}"
+        return 1
+    fi
+    if ! ${SUDO} sgdisk -e "${tmp_img}" >/dev/null 2>&1; then
+        cleanup_failed_shrink "${tmp_img}"
+        return 1
+    fi
+    if ! ${SUDO} sgdisk -v "${tmp_img}" >/dev/null 2>&1; then
+        cleanup_failed_shrink "${tmp_img}"
+        return 1
+    fi
+    if ! mv -f "${tmp_img}" "${src_img}"; then
+        cleanup_failed_shrink "${tmp_img}"
+        return 1
+    fi
+}
+
+if shrink_image "${IMG}"; then
+    printf 'Image shrink succeeded.\n'
+else
+    printf 'WARN: image shrink failed; keeping unshrunk image.\n'
 fi
-set -e
 
 xz -T0 -z -k -f "${IMG}"
 sha256sum "${IMG}.xz" > "${IMG}.xz.sha256"

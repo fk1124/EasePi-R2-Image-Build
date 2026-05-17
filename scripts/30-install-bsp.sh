@@ -382,7 +382,9 @@ ${SUDO} mount --bind /dev/pts "${ROOTFS_DIR}/dev/pts"
 ${SUDO} mount -t proc proc "${ROOTFS_DIR}/proc"
 ${SUDO} mount -t sysfs sysfs "${ROOTFS_DIR}/sys"
 
-${SUDO} chroot "${ROOTFS_DIR}" /bin/bash -e <<'CHROOT'
+${SUDO} chroot "${ROOTFS_DIR}" /usr/bin/env \
+  BRANCH="${BRANCH}" \
+  /bin/bash -e <<'CHROOT'
 export DEBIAN_FRONTEND=noninteractive
 shopt -s nullglob
 
@@ -400,12 +402,18 @@ branch_kernel_flavor() {
 
 KERNEL_FLAVOR="$(branch_kernel_flavor)"
 
-DEBS=(/tmp/bsp/linux-image-${KERNEL_FLAVOR}_*.deb /tmp/bsp/linux-dtb-${KERNEL_FLAVOR}_*.deb)
-if [ ${#DEBS[@]} -eq 0 ]; then
-  echo "ERROR: no linux-image/linux-dtb debs found in /tmp/bsp for ${KERNEL_FLAVOR}"
+KERNEL_DEBS=(/tmp/bsp/linux-image-${KERNEL_FLAVOR}_*.deb)
+DTB_DEBS=(/tmp/bsp/linux-dtb-${KERNEL_FLAVOR}_*.deb)
+if [ ${#KERNEL_DEBS[@]} -eq 0 ] || [ ${#DTB_DEBS[@]} -eq 0 ]; then
+  echo "ERROR: missing required BSP kernel packages for ${KERNEL_FLAVOR}"
+  [ ${#KERNEL_DEBS[@]} -gt 0 ] || echo "  missing: linux-image-${KERNEL_FLAVOR}_*.deb"
+  [ ${#DTB_DEBS[@]} -gt 0 ] || echo "  missing: linux-dtb-${KERNEL_FLAVOR}_*.deb"
+  echo "Contents of /tmp/bsp:"
+  find /tmp/bsp -maxdepth 1 -mindepth 1 -printf '  %f\n' 2>/dev/null | sort || ls -la /tmp/bsp
   exit 1
 fi
 
+DEBS=("${KERNEL_DEBS[@]}" "${DTB_DEBS[@]}")
 dpkg -i "${DEBS[@]}" || apt-get -f install -y
 
 
@@ -467,6 +475,36 @@ ${SUDO} chroot "${ROOTFS_DIR}" /usr/bin/env \
   /bin/bash -e <<'CHROOT_USER'
 export DEBIAN_FRONTEND=noninteractive
 
+APT_COMMON_OPTIONS=(
+  -o Dpkg::Options::=--force-confdef
+  -o Dpkg::Options::=--force-confold
+)
+
+apt_install_required() {
+  [ "$#" -gt 0 ] || return 0
+  apt-get install -y --no-install-recommends "${APT_COMMON_OPTIONS[@]}" "$@"
+}
+
+apt_install_non_required() {
+  local level="$1"
+  shift
+
+  local pkg
+  for pkg in "$@"; do
+    if ! apt-get install -y --no-install-recommends "${APT_COMMON_OPTIONS[@]}" "${pkg}"; then
+      echo "WARN: ${level} package install failed: ${pkg}"
+    fi
+  done
+}
+
+apt_install_recommended() {
+  apt_install_non_required "recommended" "$@"
+}
+
+apt_install_optional() {
+  apt_install_non_required "optional" "$@"
+}
+
 # 默认不创建普通用户。只有显式 CREATE_USER=yes 时才创建。
 if [ "${CREATE_USER}" = "yes" ]; then
   if [ -z "${IMAGE_USER}" ] || [ -z "${IMAGE_PASSWORD}" ]; then
@@ -525,37 +563,41 @@ if ! command -v dnsmasq >/dev/null 2>&1 || ! command -v nft >/dev/null 2>&1; the
   if [ -f /etc/nftables.conf ]; then
     mv /etc/nftables.conf "$NFT_BACKUP"
   fi
-  EASEPI_R2_COMMON_RUNTIME=(
+  EASEPI_R2_REQUIRED_RUNTIME=(
     iproute2 iputils-ping ethtool bridge-utils dnsmasq nftables iptables
-    ppp pppoe curl ca-certificates wpasupplicant hostapd
-    rfkill bluetooth bluez bluez-tools v4l-utils
+    curl ca-certificates
+  )
+  EASEPI_R2_RECOMMENDED_RUNTIME=(
+    ppp pppoe wpasupplicant hostapd rfkill bluetooth bluez
+  )
+  EASEPI_R2_OPTIONAL_RUNTIME=(
+    bluez-tools v4l-utils
   )
   if [ "${BRANCH}" = "vendor" ]; then
-    EASEPI_R2_GPU_RUNTIME=(libdrm2 libgbm1 ocl-icd-libopencl1 clinfo)
+    EASEPI_R2_REQUIRED_GPU_RUNTIME=(libdrm2 libgbm1 ocl-icd-libopencl1)
+    EASEPI_R2_OPTIONAL_GPU_RUNTIME=(clinfo)
   else
-    EASEPI_R2_GPU_RUNTIME=(
+    EASEPI_R2_REQUIRED_GPU_RUNTIME=(
       libdrm2 libegl-mesa0 libgles2 libgl1-mesa-dri
-      mesa-vulkan-drivers mesa-utils vulkan-tools
-      kmscube glmark2-es2-drm
+      mesa-vulkan-drivers mesa-utils
+    )
+    EASEPI_R2_OPTIONAL_GPU_RUNTIME=(
+      vulkan-tools kmscube glmark2-es2-drm
     )
   fi
-  apt-get update || true
-  apt-get install -y --no-install-recommends \
-    -o Dpkg::Options::=--force-confdef \
-    -o Dpkg::Options::=--force-confold \
-    "${EASEPI_R2_COMMON_RUNTIME[@]}" \
-    "${EASEPI_R2_GPU_RUNTIME[@]}" || true
+  apt-get update
+  apt_install_required "${EASEPI_R2_REQUIRED_RUNTIME[@]}" "${EASEPI_R2_REQUIRED_GPU_RUNTIME[@]}"
+  apt_install_recommended "${EASEPI_R2_RECOMMENDED_RUNTIME[@]}"
+  apt_install_optional "${EASEPI_R2_OPTIONAL_RUNTIME[@]}" "${EASEPI_R2_OPTIONAL_GPU_RUNTIME[@]}"
   if [ -f "$NFT_BACKUP" ]; then
     mv "$NFT_BACKUP" /etc/nftables.conf
   fi
 fi
 
 if [ "${BRANCH}" = "vendor" ] && [ "${EASEPI_R2_VENDOR_GPU_STACK}" = "libmali" ] && [ -f /tmp/easepi-r2-libmali.deb ]; then
-  apt-get update || true
-  apt-get install -y --no-install-recommends \
-    -o Dpkg::Options::=--force-confdef \
-    -o Dpkg::Options::=--force-confold \
-    libdrm2 libgbm1 ocl-icd-libopencl1 clinfo v4l-utils ca-certificates || true
+  apt-get update
+  apt_install_required libdrm2 libgbm1 ocl-icd-libopencl1 ca-certificates
+  apt_install_optional clinfo v4l-utils
   dpkg -i /tmp/easepi-r2-libmali.deb || apt-get -f install -y
   rm -f /tmp/easepi-r2-libmali.deb
 fi

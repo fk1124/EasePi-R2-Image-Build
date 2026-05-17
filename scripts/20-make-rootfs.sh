@@ -28,6 +28,16 @@ esac
 printf '\n[2/4] Create %s %s arm64 rootfs\n' "${DIST}" "${RELEASE}"
 printf 'Rootfs directory: %s\n' "${ROOTFS_DIR}"
 
+DEBOOTSTRAP_SCRIPT="/usr/share/debootstrap/scripts/${RELEASE}"
+if [ ! -e "${DEBOOTSTRAP_SCRIPT}" ]; then
+    echo "ERROR: this host's debootstrap does not support release '${RELEASE}'."
+    echo "Missing debootstrap script: ${DEBOOTSTRAP_SCRIPT}"
+    echo
+    echo "Please upgrade debootstrap, or build on a newer Debian/Ubuntu host/container"
+    echo "that already knows ${DIST} ${RELEASE}."
+    exit 1
+fi
+
 ${SUDO} rm -rf "${ROOTFS_DIR}"
 ${SUDO} mkdir -p "${ROOTFS_DIR}"
 

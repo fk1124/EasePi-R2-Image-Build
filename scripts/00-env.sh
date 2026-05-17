@@ -9,7 +9,7 @@ mkdir -p "${REPO_DIR}/work" "${REPO_DIR}/output/bsp" "${REPO_DIR}/output/rootfs"
 need_cmds=(
   git curl wget rsync tar xzcat xz zstd
   debootstrap qemu-aarch64-static update-binfmts
-  parted losetup mkfs.vfat mkfs.ext4 blkid findmnt
+  parted sgdisk losetup mkfs.vfat mkfs.ext4 e2fsck resize2fs dumpe2fs blkid findmnt
   chroot dpkg-deb dd sed awk grep
   mkimage
 )
@@ -31,7 +31,7 @@ sudo apt install -y git curl wget rsync unzip xz-utils ca-certificates
 sudo apt install -y build-essential gcc g++ make bc bison flex
 sudo apt install -y libssl-dev libncurses-dev python3 python3-pip python3-setuptools
 sudo apt install -y file cpio qemu-user-static binfmt-support debootstrap
-sudo apt install -y parted dosfstools e2fsprogs util-linux u-boot-tools
+sudo apt install -y parted gdisk dosfstools e2fsprogs util-linux u-boot-tools
 sudo apt install -y zstd
 APT
     exit 1

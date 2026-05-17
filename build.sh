@@ -3,6 +3,8 @@ set -euo pipefail
 
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 BUILD_DIR="${ARMBIAN_BUILD_DIR:-${REPO_DIR}/../build}"
+WORK_DIR="${WORK_DIR:-${REPO_DIR}/work}"
+GENERATED_USERPATCHES_DIR="${WORK_DIR}/userpatches.generated"
 
 BOARD="${BOARD:-easepi-r2}"
 BRANCH="${1:-current}"
@@ -337,20 +339,23 @@ set_kernel_config_value() {
 }
 
 prepare_kernel_configs() {
-    mkdir -p "${REPO_DIR}/userpatches"
+    rm -rf "${GENERATED_USERPATCHES_DIR}"
+    mkdir -p "${GENERATED_USERPATCHES_DIR}"
+    rsync -a "${REPO_DIR}/userpatches/" "${GENERATED_USERPATCHES_DIR}/"
 
-    local cfg src dst found refresh
+    local cfg src repo_dst dst found refresh
     local configs=(
         "linux-rockchip64-current.config"
         "linux-rockchip64-edge.config"
         "linux-rk35xx-vendor.config"
     )
 
-    refresh="${EASEPI_R2_REFRESH_KERNEL_CONFIGS:-no}"
+    refresh="${EASEPI_R2_REFRESH_KERNEL_CONFIG_TEMPLATES:-${EASEPI_R2_REFRESH_KERNEL_CONFIGS:-no}}"
 
     for cfg in "${configs[@]}"; do
         src="${BUILD_DIR}/config/kernel/${cfg}"
-        dst="${REPO_DIR}/userpatches/${cfg}"
+        repo_dst="${REPO_DIR}/userpatches/${cfg}"
+        dst="${GENERATED_USERPATCHES_DIR}/${cfg}"
         found=""
 
         if [ -f "${src}" ]; then
@@ -359,10 +364,15 @@ prepare_kernel_configs() {
             found="$(find "${BUILD_DIR}/config" -type f -name "${cfg}" 2>/dev/null | head -1 || true)"
         fi
 
-        if [ -n "${found}" ] && [ -f "${found}" ] && { [ ! -f "${dst}" ] || [ "${refresh}" = "yes" ]; }; then
+        if [ "${refresh}" = "yes" ] && [ -n "${found}" ] && [ -f "${found}" ]; then
+            mkdir -p "${REPO_DIR}/userpatches"
+            cp -f "${found}" "${repo_dst}"
             cp -f "${found}" "${dst}"
+            msg "Refreshed kernel config template: ${repo_dst}"
         elif [ -f "${dst}" ]; then
-            msg "Reuse existing kernel config: ${dst}"
+            msg "Reuse generated kernel config from repository template: ${dst}"
+        elif [ -n "${found}" ] && [ -f "${found}" ]; then
+            cp -f "${found}" "${dst}"
         else
             msg "WARN: default kernel config not found and user config missing: ${cfg}"
             continue
@@ -413,7 +423,7 @@ prepare_kernel_configs() {
             set_kernel_config_not_set "${dst}" "CONFIG_RTL8852BS"
         fi
 
-        msg "Prepared kernel config: ${dst}"
+        msg "Prepared generated kernel config: ${dst}"
     done
 }
 
@@ -550,7 +560,7 @@ printf 'Threads         : %s\n' "${CPUTHREADS}"
 printf 'Clean level     : %s\n' "${CLEAN_LEVEL:-default}"
 printf '============================================\n'
 
-rsync -a --delete "${REPO_DIR}/userpatches/" "${BUILD_DIR}/userpatches/"
+rsync -a --delete "${GENERATED_USERPATCHES_DIR}/" "${BUILD_DIR}/userpatches/"
 
 cd "${BUILD_DIR}"
 
