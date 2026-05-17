@@ -1,9 +1,7 @@
 # EasePi-R2 Image Build
 **EasePi-R2** 多系统镜像构建项目。
 
-## 基础环境要求
-
-推荐使用 **原生 Linux 主机** 或 **Linux 虚拟机** 编译。
+## 编译环境要求
 
 推荐系统：
 
@@ -22,8 +20,6 @@ CPU：4 核以上，推荐 8 核以上
 网络：能正常访问 GitHub、Debian/Ubuntu 软件源、Armbian 源
 ```
 
-不推荐使用 WSL。内核编译、loop 设备、chroot、binfmt、挂载镜像和权限处理都更适合在完整 Linux 环境下完成。
-
 ## 一、安装依赖
 
 ```bash
@@ -38,7 +34,19 @@ sudo apt install -y zstd
 
 ## 二、基础装备
 
-推荐目录结构：
+（一）拉取源码：
+
+```bash
+mkdir -p ~/rk3588_build
+cd ~/rk3588_build
+
+git clone --depth=1 https://github.com/armbian/build.git build
+git clone https://github.com/fk1124/EasePi-R2-Image-Build.git
+
+cd EasePi-R2-Image-Build
+chmod +x build-image.sh build.sh build-bsp-image.sh scripts/*.sh
+```
+拉取后的目录结构应该为：
 
 ```text
 ~/rk3588_build/
@@ -53,50 +61,14 @@ sudo apt install -y zstd
     └── userpatches/                # Armbian 板级、内核、U-Boot、overlay 适配
 ```
 
-准备源码：
-
-```bash
-mkdir -p ~/rk3588_build
-cd ~/rk3588_build
-
-git clone --depth=1 https://github.com/armbian/build.git build
-git clone https://github.com/fk1124/EasePi-R2-Image-Build.git
-
-cd EasePi-R2-Image-Build
-chmod +x build-image.sh build.sh build-bsp-image.sh scripts/*.sh
-```
-
 ## 三、开始编译
 
-进入项目目录：
+（一）进入项目目录：
 
 ```bash
 cd ~/rk3588_build/EasePi-R2-Image-Build
 ```
-
-建议优先使用统一入口：
-
-```bash
-bash build-image.sh <系统> <发行版> <内核> <镜像类型>
-```
-
-可用内核别名：
-
-```text
-6.1     -> vendor
-6.18    -> current
-7.0     -> stable Linux 7.0 profile
-```
-
-可用镜像类型：
-
-```text
-minimal
-server
-desktop
-```
-
-空白命令表示矩阵位置已经预留，但脚本还没有接入。
+（二）输入编译命令开始编译
 
 ### 1. 主推镜像
 
