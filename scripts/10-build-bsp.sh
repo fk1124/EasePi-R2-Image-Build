@@ -6,6 +6,8 @@ SUDO="${SUDO:-sudo}"
 WORK_DIR="${WORK_DIR:-${REPO_DIR}/work}"
 GENERATED_USERPATCHES_DIR="${WORK_DIR}/userpatches.generated"
 
+source "${REPO_DIR}/scripts/armbian-patch-guard.sh"
+
 BOARD="${BOARD:-easepi-r2}"
 DIST="${DIST:-debian}"
 BRANCH="${BRANCH:-current}"
@@ -803,9 +805,18 @@ fi
 PV_WRAPPER_DIR=""
 if [ "${EASEPI_R2_DISABLE_ARMBIAN_PV:-yes}" = "yes" ]; then
     PV_WRAPPER_DIR="$(install_pv_cat_wrapper)"
-    trap 'rm -rf "${PV_WRAPPER_DIR}"' EXIT
     msg "Using cat-based pv wrapper to avoid rootfs extraction stalls."
 fi
+
+cleanup_build_helpers() {
+    easepi_r2_restore_armbian_patches
+    if [ -n "${PV_WRAPPER_DIR:-}" ]; then
+        rm -rf "${PV_WRAPPER_DIR}"
+    fi
+}
+
+trap cleanup_build_helpers EXIT
+easepi_r2_disable_known_bad_armbian_patches "${BUILD_DIR}"
 
 set +e
 # Keep the Armbian build non-interactive without feeding an infinite stream into
