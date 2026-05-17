@@ -123,9 +123,9 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 
 | 类型 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
 | --- | --- | --- | --- | --- |
-| minimal | `bash build-image.sh armbian bookworm 6.18 minimal` | ⭐⭐⭐⭐ |  | 最小化镜像，适合首轮启动与二次定制 |
-| server | `bash build-image.sh armbian bookworm 6.18 server` | ⭐⭐⭐ |  | 增加容器/路由/运维组件，适合长期运行 |
-| desktop | `bash build-image.sh armbian bookworm 6.18 desktop` | ⭐⭐ |  | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
+| minimal | `bash build-image.sh armbian bookworm 6.18 minimal` | ⭐⭐⭐⭐ | ✅ | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh armbian bookworm 6.18 server` | ⭐⭐⭐ | ✅ | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh armbian bookworm 6.18 desktop` | ⭐⭐ | ✅ | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
 
 <a id="cmd-armbian-trixie-618"></a>
 
@@ -133,9 +133,9 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 
 | 类型 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
 | --- | --- | --- | --- | --- |
-| minimal | `bash build-image.sh armbian trixie 6.18 minimal` | ⭐⭐⭐⭐⭐ |  | 最小化镜像，适合首轮启动与二次定制 |
-| server | `bash build-image.sh armbian trixie 6.18 server` | ⭐⭐⭐⭐ |  | 增加容器/路由/运维组件，适合长期运行 |
-| desktop | `bash build-image.sh armbian trixie 6.18 desktop` | ⭐⭐⭐ |  | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
+| minimal | `bash build-image.sh armbian trixie 6.18 minimal` | ⭐⭐⭐⭐⭐ | ✅ | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh armbian trixie 6.18 server` | ⭐⭐⭐⭐ | ✅ | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh armbian trixie 6.18 desktop` | ⭐⭐⭐ | ✅ | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
 
 <a id="cmd-armbian-trixie-70"></a>
 
@@ -215,9 +215,9 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 
 | 类型 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
 | --- | --- | --- | --- | --- |
-| minimal | `bash build-image.sh debian bookworm 6.1 minimal` | ⭐⭐⭐⭐ |  | 最小化镜像，适合首轮启动与二次定制 |
-| server | `bash build-image.sh debian bookworm 6.1 server` | ⭐⭐⭐ |  | 增加容器/路由/运维组件，适合长期运行 |
-| desktop | `bash build-image.sh debian bookworm 6.1 desktop` | ⭐⭐ |  | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
+| minimal | `bash build-image.sh debian bookworm 6.1 minimal` | ⭐⭐⭐⭐ | ✅ | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh debian bookworm 6.1 server` | ⭐⭐⭐ | ✅ | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh debian bookworm 6.1 desktop` | ⭐⭐ | ✅ | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
 
 <a id="cmd-debian-bookworm-618"></a>
 
@@ -225,9 +225,9 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 
 | 类型 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
 | --- | --- | --- | --- | --- |
-| minimal | `bash build-image.sh debian bookworm 6.18 minimal` | ⭐⭐⭐ |  | 最小化镜像，适合首轮启动与二次定制 |
-| server | `bash build-image.sh debian bookworm 6.18 server` | ⭐⭐ |  | 增加容器/路由/运维组件，适合长期运行 |
-| desktop | `bash build-image.sh debian bookworm 6.18 desktop` | ⭐ |  | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
+| minimal | `bash build-image.sh debian bookworm 6.18 minimal` | ⭐⭐⭐ | ✅ | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh debian bookworm 6.18 server` | ⭐⭐ | ✅ | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh debian bookworm 6.18 desktop` | ⭐ | ✅ | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
 
 <a id="cmd-debian-trixie-618"></a>
 
@@ -235,9 +235,9 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 
 | 类型 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
 | --- | --- | --- | --- | --- |
-| minimal | `bash build-image.sh debian trixie 6.18 minimal` | ⭐⭐⭐⭐⭐ |  | 最小化镜像，适合首轮启动与二次定制 |
-| server | `bash build-image.sh debian trixie 6.18 server` | ⭐⭐⭐⭐ |  | 增加容器/路由/运维组件，适合长期运行 |
-| desktop | `bash build-image.sh debian trixie 6.18 desktop` | ⭐⭐⭐ |  | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
+| minimal | `bash build-image.sh debian trixie 6.18 minimal` | ⭐⭐⭐⭐⭐ | ✅ | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh debian trixie 6.18 server` | ⭐⭐⭐⭐ | ✅ | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh debian trixie 6.18 desktop` | ⭐⭐⭐ | ✅ | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
 
 <a id="cmd-debian-trixie-70"></a>
 
@@ -245,9 +245,9 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 
 | 类型 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
 | --- | --- | --- | --- | --- |
-| minimal | `bash build-image.sh debian trixie 7.0 minimal` | ⭐⭐⭐ |  | 最小化镜像，适合首轮启动与二次定制 |
-| server | `bash build-image.sh debian trixie 7.0 server` | ⭐⭐ |  | 增加容器/路由/运维组件，适合长期运行 |
-| desktop | `bash build-image.sh debian trixie 7.0 desktop` | ⭐ |  | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
+| minimal | `bash build-image.sh debian trixie 7.0 minimal` | ⭐⭐⭐ | ✅ | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh debian trixie 7.0 server` | ⭐⭐ | ✅ | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh debian trixie 7.0 desktop` | ⭐ | ✅ | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
 
 <a id="cmd-debian-forky-70"></a>
 
@@ -287,9 +287,9 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 
 | 类型 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
 | --- | --- | --- | --- | --- |
-| minimal | `bash build-image.sh ubuntu noble 6.18 minimal` | ⭐⭐⭐⭐⭐ |  | 最小化镜像，适合首轮启动与二次定制 |
-| server | `bash build-image.sh ubuntu noble 6.18 server` | ⭐⭐⭐⭐ |  | 增加容器/路由/运维组件，适合长期运行 |
-| desktop | `bash build-image.sh ubuntu noble 6.18 desktop` | ⭐⭐⭐ |  | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
+| minimal | `bash build-image.sh ubuntu noble 6.18 minimal` | ⭐⭐⭐⭐⭐ | ✅ | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh ubuntu noble 6.18 server` | ⭐⭐⭐⭐ | ✅ | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh ubuntu noble 6.18 desktop` | ⭐⭐⭐ | ✅ | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
 
 <a id="cmd-ubuntu-noble-70"></a>
 
@@ -297,9 +297,9 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 
 | 类型 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
 | --- | --- | --- | --- | --- |
-| minimal | `bash build-image.sh ubuntu noble 7.0 minimal` | ⭐⭐⭐ |  | 最小化镜像，适合首轮启动与二次定制 |
-| server | `bash build-image.sh ubuntu noble 7.0 server` | ⭐⭐ |  | 增加容器/路由/运维组件，适合长期运行 |
-| desktop | `bash build-image.sh ubuntu noble 7.0 desktop` | ⭐ |  | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
+| minimal | `bash build-image.sh ubuntu noble 7.0 minimal` | ⭐⭐⭐ | ✅ | 最小化镜像，适合首轮启动与二次定制 |
+| server | `bash build-image.sh ubuntu noble 7.0 server` | ⭐⭐ | ✅ | 增加容器/路由/运维组件，适合长期运行 |
+| desktop | `bash build-image.sh ubuntu noble 7.0 desktop` | ⭐ | ✅ | XFCE 桌面，适合 HDMI/GPU/图形栈验证 |
 
 <a id="cmd-ubuntu-resolute-70"></a>
 
