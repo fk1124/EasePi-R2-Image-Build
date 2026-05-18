@@ -597,6 +597,29 @@ set_kernel_config_value() {
     printf '%s=%s\n' "${name}" "${value}" >> "${file}"
 }
 
+enable_vfio_iommu_capabilities() {
+    local file="$1"
+    local cfg="$2"
+
+    if [ "${cfg}" = "linux-rk35xx-vendor.config" ]; then
+        set_kernel_config_value "${file}" "CONFIG_VFIO" "y"
+        set_kernel_config_value "${file}" "CONFIG_VFIO_PCI" "y"
+        set_kernel_config_value "${file}" "CONFIG_ARM_SMMU_V3" "y"
+        return 0
+    fi
+
+    set_kernel_config_value "${file}" "CONFIG_VFIO" "m"
+    set_kernel_config_value "${file}" "CONFIG_VFIO_GROUP" "y"
+    set_kernel_config_value "${file}" "CONFIG_VFIO_CONTAINER" "y"
+    set_kernel_config_value "${file}" "CONFIG_VFIO_DEVICE_CDEV" "y"
+    set_kernel_config_value "${file}" "CONFIG_VFIO_PCI" "m"
+    set_kernel_config_value "${file}" "CONFIG_IOMMUFD" "y"
+    set_kernel_config_value "${file}" "CONFIG_ARM_SMMU" "y"
+    set_kernel_config_value "${file}" "CONFIG_ARM_SMMU_V3" "y"
+    set_kernel_config_value "${file}" "CONFIG_ARM_SMMU_V3_SVA" "y"
+    set_kernel_config_value "${file}" "CONFIG_ARM_SMMU_V3_IOMMUFD" "y"
+}
+
 prepare_kernel_configs() {
     bash "${REPO_DIR}/scripts/sync-root-scripts.sh"
 
@@ -658,6 +681,8 @@ prepare_kernel_configs() {
 
         grep -q '^# CONFIG_DRM_PANEL_SIMPLE_DSI is not set' "${dst}" || \
             echo '# CONFIG_DRM_PANEL_SIMPLE_DSI is not set' >> "${dst}"
+
+        enable_vfio_iommu_capabilities "${dst}" "${cfg}"
 
         if [ "${cfg}" = "linux-rk35xx-vendor.config" ]; then
             set_kernel_config_value "${dst}" "CONFIG_R8125" "m"
