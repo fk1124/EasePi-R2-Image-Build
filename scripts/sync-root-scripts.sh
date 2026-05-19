@@ -7,7 +7,7 @@ WORK_DIR="${WORK_DIR:-${REPO_DIR}/work}"
 SCRIPT_REPO="${EASEPI_R2_SCRIPT_REPO:-https://github.com/fk1124/EasePi-R2-Script.git}"
 SCRIPT_REF="${EASEPI_R2_SCRIPT_REF:-main}"
 SCRIPT_SYNC="${EASEPI_R2_SCRIPT_SYNC:-yes}"
-SCRIPT_GIT_INHERIT_CONFIG="${EASEPI_R2_SCRIPT_GIT_INHERIT_CONFIG:-no}"
+SCRIPT_GIT_INHERIT_CONFIG="${EASEPI_R2_SCRIPT_GIT_INHERIT_CONFIG:-${EASEPI_R2_INHERIT_HOST_GIT_CONFIG:-no}}"
 CACHE_DIR="${EASEPI_R2_SCRIPT_CACHE_DIR:-${WORK_DIR}/cache/easepi-r2-script}"
 DEST_DIR="${1:-${REPO_DIR}/userpatches/overlay/easepi-r2-peripherals/root}"
 
@@ -35,7 +35,7 @@ git_sync() {
             ;;
         *)
             echo "ERROR: unsupported EASEPI_R2_SCRIPT_GIT_INHERIT_CONFIG=${SCRIPT_GIT_INHERIT_CONFIG}" >&2
-            echo "Use yes to inherit host git config, or no to clone the public script repo directly." >&2
+            echo "Use no to force direct GitHub access, or yes to inherit host git config." >&2
             exit 1
             ;;
     esac

@@ -32,8 +32,8 @@ export EASEPI_R2_KERNEL_PROFILE
 # - REGIONAL_MIRROR 默认留空，不再默认 china，避免 Armbian 区域缓存源慢。
 # - MAINLINE_MIRROR=auto：自动选择 Linux 内核 Git 源。
 # - UBOOT_MIRROR=auto：自动选择 U-Boot Git 源。
-# - GITHUB_SOURCE=auto：自动选择 GitHub Release 下载源。
-# - GITHUB_MIRROR 默认留空，避免 gitclone 下载 GitHub Release 返回 500。
+# - GITHUB_SOURCE 默认 https://github.com，GitHub Release 直连下载。
+# - GITHUB_MIRROR 固定留空。
 # - KERNEL_GIT=shallow：下载量小，适合普通用户首次编译。
 #
 # 可手动覆盖：
@@ -47,10 +47,11 @@ export EASEPI_R2_KERNEL_PROFILE
 REGIONAL_MIRROR="${REGIONAL_MIRROR-}"
 MAINLINE_MIRROR="${MAINLINE_MIRROR:-auto}"
 UBOOT_MIRROR="${UBOOT_MIRROR:-auto}"
-GITHUB_SOURCE="${GITHUB_SOURCE:-auto}"
-GITHUB_MIRROR="${GITHUB_MIRROR-}"
+GITHUB_SOURCE="${GITHUB_SOURCE:-https://github.com}"
+GITHUB_MIRROR=""
 KERNEL_GIT="${KERNEL_GIT:-shallow}"
 CPUTHREADS="${CPUTHREADS:-$(nproc)}"
+EASEPI_R2_INHERIT_HOST_GIT_CONFIG="${EASEPI_R2_INHERIT_HOST_GIT_CONFIG:-no}"
 
 ORAS_PREFETCH="${ORAS_PREFETCH:-yes}"
 ORAS_VERSION="${ORAS_VERSION:-1.3.1}"
@@ -62,6 +63,36 @@ mkdir -p "${BSP_DIR}"
 
 msg() {
     printf '%s\n' "$*"
+}
+
+setup_github_direct_git_config() {
+    case "${EASEPI_R2_INHERIT_HOST_GIT_CONFIG}" in
+        yes|1|true|TRUE)
+            return 0
+            ;;
+        no|0|false|FALSE)
+            ;;
+        *)
+            echo "ERROR: unsupported EASEPI_R2_INHERIT_HOST_GIT_CONFIG=${EASEPI_R2_INHERIT_HOST_GIT_CONFIG}" >&2
+            echo "Use no to force direct GitHub access, or yes to inherit host git config." >&2
+            exit 1
+            ;;
+    esac
+
+    local git_config="${WORK_DIR}/gitconfig.github-direct"
+
+    mkdir -p "${WORK_DIR}"
+    {
+        printf '[core]\n'
+        printf '\taskPass =\n'
+        printf '[credential]\n'
+        printf '\thelper =\n'
+        printf '[safe]\n'
+        printf '\tdirectory = *\n'
+    } > "${git_config}"
+
+    export GIT_CONFIG_NOSYSTEM=1
+    export GIT_CONFIG_GLOBAL="${git_config}"
 }
 
 append_csv_value() {
@@ -241,50 +272,35 @@ choose_mainline_mirror() {
 }
 
 choose_uboot_mirror() {
-    if [ "${UBOOT_MIRROR}" != "auto" ]; then
-        return 0
+    if [ "${UBOOT_MIRROR}" != "auto" ] && [ "${UBOOT_MIRROR}" != "github" ]; then
+        msg "WARN: ignoring UBOOT_MIRROR=${UBOOT_MIRROR}; using github."
     fi
 
     msg
-    msg "Auto selecting U-Boot mirror..."
+    msg "Using GitHub U-Boot source..."
 
     if probe_git "u-boot GitHub" "https://github.com/u-boot/u-boot.git" "HEAD" 15; then
         UBOOT_MIRROR="github"
         return 0
     fi
 
-    if probe_git "u-boot Gitee" "https://gitee.com/mirrors/u-boot.git" "HEAD" 15; then
-        UBOOT_MIRROR="gitee"
-        return 0
-    fi
-
-    msg "WARN: both GitHub and Gitee U-Boot probes failed, fallback to github."
+    msg "WARN: GitHub U-Boot probe failed, still using github."
     UBOOT_MIRROR="github"
 }
 
 choose_github_source() {
-    if [ "${GITHUB_SOURCE}" != "auto" ]; then
-        return 0
-    fi
-
     local oras_file="oras_${ORAS_VERSION}_linux_amd64.tar.gz"
     local direct_url="https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/${oras_file}"
-    local ghfast_url="https://ghfast.top/https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/${oras_file}"
 
     msg
-    msg "Auto selecting GitHub release source..."
+    msg "Using GitHub direct release source..."
 
     if probe_url "GitHub direct" "${direct_url}" 15; then
         GITHUB_SOURCE="https://github.com"
         return 0
     fi
 
-    if probe_url "GitHub ghfast" "${ghfast_url}" 15; then
-        GITHUB_SOURCE="https://ghfast.top/https://github.com"
-        return 0
-    fi
-
-    msg "WARN: GitHub release probe failed, fallback to https://github.com."
+    msg "WARN: GitHub direct release probe failed, still using https://github.com."
     GITHUB_SOURCE="https://github.com"
 }
 
@@ -400,32 +416,8 @@ hash_bsp_config_file() {
 }
 
 trust_existing_git_caches() {
-    if ! command -v git >/dev/null 2>&1; then
-        return 0
-    fi
-
-    local build_dir_safe
-    build_dir_safe="$(readlink -f "${BUILD_DIR}" 2>/dev/null || printf '%s' "${BUILD_DIR}")"
-
-    git config --global --add safe.directory "${BUILD_DIR}" 2>/dev/null || true
-    git config --global --add safe.directory "${build_dir_safe}" 2>/dev/null || true
-
-    local repo
-    if [ -d "${build_dir_safe}/cache/git-bare" ]; then
-        while IFS= read -r -d '' repo; do
-            git config --global --add safe.directory "${repo}" 2>/dev/null || true
-        done < <(find "${build_dir_safe}/cache/git-bare" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
-    fi
-
-    if [ -d "${build_dir_safe}/cache/sources" ]; then
-        while IFS= read -r -d '' repo; do
-            git config --global --add safe.directory "${repo}" 2>/dev/null || true
-        done < <(
-            find "${build_dir_safe}/cache/sources" -mindepth 1 -maxdepth 5 \
-                \( -type d -name .git -printf '%h\0' -o -type f -name .git -printf '%h\0' \) \
-                2>/dev/null
-        )
-    fi
+    # The generated direct-GitHub config already sets safe.directory=*.
+    return 0
 }
 
 calc_bsp_input_hash() {
@@ -715,6 +707,8 @@ prepare_kernel_configs() {
 
 BUILD_DIR="$(locate_build_dir)"
 
+setup_github_direct_git_config
+
 if [ -z "${BUILD_DIR}" ]; then
     msg "Armbian build tree not found; cloning to work/armbian-build ..."
     mkdir -p "${WORK_DIR}"
@@ -773,9 +767,6 @@ export WT_SESSION=1
 export ALLOW_ROOT=yes
 export GIT_TERMINAL_PROMPT=0
 export SKIP_ORAS=yes
-
-git config --global core.askPass '' 2>/dev/null || true
-git config --global credential.helper '' 2>/dev/null || true
 
 trust_existing_git_caches
 prefetch_oras_tooling

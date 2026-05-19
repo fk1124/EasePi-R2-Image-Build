@@ -40,8 +40,8 @@ sudo apt install -y zstd
 mkdir -p ~/rk3588_build
 cd ~/rk3588_build
 
-git clone --depth=1 https://github.com/armbian/build.git build
-git clone https://github.com/fk1124/EasePi-R2-Image-Build.git
+GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git clone --depth=1 https://github.com/armbian/build.git build
+GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git clone https://github.com/fk1124/EasePi-R2-Image-Build.git
 
 cd EasePi-R2-Image-Build
 chmod +x build-image.sh build.sh build-bsp-image.sh scripts/*.sh
@@ -493,7 +493,7 @@ sudo rm -rf output work
 | `CPUTHREADS` | 指定编译线程数 | `8` |
 | `REGIONAL_MIRROR` | 指定区域镜像策略 | `china` |
 | `MAINLINE_MIRROR` | 指定主线内核镜像 | `google` / `tuna` / `bfsu` |
-| `UBOOT_MIRROR` | 指定 U-Boot 源 | `github` / `gitee` |
+| `UBOOT_MIRROR` | 指定 U-Boot 源 | `github` |
 | `IMAGE_SIZE_MB` | 指定最终镜像大小 | `8192` |
 | `BOOT_SIZE_MB` | 指定 boot 分区大小 | `512` |
 | `ROOT_PASSWORD` | BSP 镜像 root 密码 | 自定义 |
