@@ -16,6 +16,7 @@ Systems:
   fedora         Fedora BSP packed image, routed to build-rootfs-image.sh
   archlinuxarm   Arch Linux ARM BSP packed image, routed to build-rootfs-image.sh
   kali           Kali ARM BSP packed image, routed to build-rootfs-image.sh
+  openwrt        OpenWrt image, routed to build-openwrt-image.sh
 
 Kernel aliases:
   6.1 | vendor
@@ -25,6 +26,7 @@ Kernel aliases:
 Image types:
   minimal | server | desktop
   Alpine/Fedora/Arch/Kali currently support minimal | server.
+  OpenWrt currently supports squashfs | ext4.
 
 Examples:
   bash build-image.sh armbian bookworm 6.1 minimal
@@ -34,6 +36,7 @@ Examples:
   bash build-image.sh fedora latest 6.18 minimal
   bash build-image.sh archlinuxarm rolling 6.18 minimal
   bash build-image.sh kali rolling 6.18 minimal
+  OPENWRT_PROFILE=rk3588-max OPENWRT_KMOD_STRATEGY=build-all-preinstall-max bash build-image.sh openwrt 25 6.18 ext4
 USAGE
 }
 
@@ -121,6 +124,13 @@ assert_supported_target() {
                     ;;
             esac
             ;;
+        openwrt)
+            case "${RELEASE}:${KERNEL_PROFILE}" in
+                24:current|25:current)
+                    return 0
+                    ;;
+            esac
+            ;;
     esac
 
     not_ready "${SYSTEM} ${RELEASE} ${KERNEL} ${IMAGE_TYPE}"
@@ -143,8 +153,10 @@ esac
 [ -n "${KERNEL}" ] || fail_usage "missing kernel"
 [ -n "${IMAGE_TYPE}" ] || fail_usage "missing image_type"
 
-case "${IMAGE_TYPE}" in
-    minimal|server|desktop) ;;
+case "${SYSTEM}:${IMAGE_TYPE}" in
+    openwrt:squashfs|openwrt:ext4) ;;
+    openwrt:*) fail_usage "unsupported OpenWrt image_type: ${IMAGE_TYPE}" ;;
+    *:minimal|*:server|*:desktop) ;;
     *) fail_usage "unsupported image_type: ${IMAGE_TYPE}" ;;
 esac
 
@@ -200,6 +212,16 @@ case "${SYSTEM}" in
             *) not_ready "Kali ARM ${RELEASE} is not wired into build-rootfs-image.sh yet." ;;
         esac
         exec bash "${REPO_DIR}/build-rootfs-image.sh" kali "${RELEASE}" "${KERNEL_PROFILE}" "${IMAGE_TYPE}"
+        ;;
+    openwrt)
+        case "${RELEASE}" in
+            24|25) ;;
+            *) not_ready "OpenWrt ${RELEASE} is not wired into build-openwrt-image.sh yet." ;;
+        esac
+        if [ ! -x "${REPO_DIR}/build-openwrt-image.sh" ]; then
+            not_ready "OpenWrt ${RELEASE} ${KERNEL} ${IMAGE_TYPE}: build-openwrt-image.sh is not implemented yet."
+        fi
+        exec bash "${REPO_DIR}/build-openwrt-image.sh" "${RELEASE}" "${KERNEL_PROFILE}" "${IMAGE_TYPE}"
         ;;
     *)
         not_ready "system ${SYSTEM}"

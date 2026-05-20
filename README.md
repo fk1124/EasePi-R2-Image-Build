@@ -109,8 +109,8 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 | fedora | latest | Fedora 44 / dnf installroot | 6.18 | - | [6.18](#cmd-fedora-latest-618) |
 | archlinuxarm | rolling | Arch Linux ARM / pacman rolling rootfs | 6.18 | - | [6.18](#cmd-archlinuxarm-rolling-618) |
 | kali | rolling | Kali ARM / Debian-family security rootfs | 6.18 | - | [6.18](#cmd-kali-rolling-618) |
-| OpenWrt | 24 | OpenWrt 24 | 6.6 | - |  |
-| OpenWrt | 25 | OpenWrt 25 | 6.12 | - |  |
+| OpenWrt | 24 | OpenWrt 24 + custom 6.18 rk3588-max | 6.18 | - | [6.18](#cmd-openwrt-24-618) |
+| OpenWrt | 25 | OpenWrt 25 + custom 6.18 rk3588-max | 6.18 | - | [6.18](#cmd-openwrt-25-618) |
 
 ### 3. 完整编译命令列表
 
@@ -360,13 +360,37 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 
 这四类镜像都会复用 `scripts/10-build-bsp.sh` 生成的 Armbian BSP。Alpine/Fedora/Arch Linux ARM 通过 `scripts/30-install-portable-bsp.sh` 提取 BSP deb 内容并用各自工具生成 initramfs；Kali ARM 走 Debian-family `dpkg` 安装路径。
 
+#### OpenWrt 24 / 25 魔改 6.18 镜像
+
+OpenWrt 路线使用 `rk3588-max` profile：6.18 自定义内核、GPU/NPU/VPU/KVM/LXC/Docker/VPN/4G/蓝牙/无线/红外线方向的内核片段，以及“构建完整本地 kmod feed + 预装最大精选 kmod”的策略。默认不要求本地魔改内核树，会先让 OpenWrt 下载 upstream `linux-6.18.tar.xz`；后续有 RK3588 vendor/self-maintained `linux-6.18.x` 树时，再通过 `OPENWRT_KERNEL_TREE=/path/to/linux-6.18.x` 接入。详细清单见 `rootfs/openwrt/`。
+
+<a id="cmd-openwrt-25-618"></a>
+
+##### openwrt 25 6.18
+
+| 类型 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| ext4 | `OPENWRT_PROFILE=rk3588-max OPENWRT_KMOD_STRATEGY=build-all-preinstall-max bash build-image.sh openwrt 25 6.18 ext4` | ⭐⭐⭐⭐⭐ | 已接入 | 可写 rootfs，优先用于 Docker/LXC/redroid/KVM/RouterOS 实验 |
+| squashfs | `OPENWRT_PROFILE=rk3588-max OPENWRT_KMOD_STRATEGY=build-all-preinstall-max bash build-image.sh openwrt 25 6.18 squashfs` | ⭐⭐⭐⭐ | 已接入 | 标准 OpenWrt 只读 rootfs + overlay，适合主路由长期运行 |
+
+<a id="cmd-openwrt-24-618"></a>
+
+##### openwrt 24 6.18
+
+| 类型 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| ext4 | `OPENWRT_PROFILE=rk3588-max OPENWRT_KMOD_STRATEGY=build-all-preinstall-max bash build-image.sh openwrt 24 6.18 ext4` | ⭐⭐⭐⭐ | 已接入 | OpenWrt 24 用户态兼容基线，可写 rootfs |
+| squashfs | `OPENWRT_PROFILE=rk3588-max OPENWRT_KMOD_STRATEGY=build-all-preinstall-max bash build-image.sh openwrt 24 6.18 squashfs` | ⭐⭐⭐ | 已接入 | OpenWrt 24 路由器形态兼容基线 |
+
+注意：OpenWrt 的 kmod 必须匹配当前内核 ABI。这个 profile 会优先构建本机 6.18 对应的 kmod 仓库，镜像内预装高价值模块，后续补装也应从同一次构建产出的本地 feed 获取。
+
 #### 其他系统预留
 
 | 系统 | 发行版 | 内核 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
 | --- | --- | --- | --- | --- | --- | --- |
 | FNOS | stable | FN专用内核 |  |  | 未接入 | FNOS 路线预留 |
-| OpenWrt | 24 | 6.6 |  |  | 未接入 | OpenWrt 24 路线预留 |
-| OpenWrt | 25 | 6.12 |  |  | 未接入 | OpenWrt 25 路线预留 |
+| OpenWrt | 24 | 6.18 | `OPENWRT_PROFILE=rk3588-max OPENWRT_KMOD_STRATEGY=build-all-preinstall-max bash build-image.sh openwrt 24 6.18 ext4` | ⭐⭐⭐⭐ | 已接入 | OpenWrt 24 用户态 + 自定义 6.18 rk3588-max 路线 |
+| OpenWrt | 25 | 6.18 | `OPENWRT_PROFILE=rk3588-max OPENWRT_KMOD_STRATEGY=build-all-preinstall-max bash build-image.sh openwrt 25 6.18 ext4` | ⭐⭐⭐⭐⭐ | 已接入 | OpenWrt 25 用户态 + 自定义 6.18 rk3588-max 路线 |
 
 ## 四、编译产物位置
 

@@ -10,6 +10,7 @@ image_types:
   fedora: [minimal, server]
   archlinuxarm: [minimal, server]
   kali: [minimal, server]
+  openwrt: [squashfs, ext4]
   reserved: []
 
 kernel_aliases:
@@ -167,18 +168,22 @@ targets:
     kernels:
       "6.18": implemented
 
-  - system: OpenWrt
+  - system: openwrt
     release: "24"
-    note: OpenWrt 24
-    primary_kernel: "6.6"
+    note: OpenWrt 24 userland with custom 6.18 RK3588 max kernel profile
+    primary_kernel: "6.18"
     secondary_kernel: null
+    profiles:
+      - rk3588-max
     kernels:
-      "6.6": reserved
+      "6.18": implemented
 
-  - system: OpenWrt
+  - system: openwrt
     release: "25"
-    note: OpenWrt 25
-    primary_kernel: "6.12"
+    note: OpenWrt 25 userland with custom 6.18 RK3588 max kernel profile
+    primary_kernel: "6.18"
     secondary_kernel: null
+    profiles:
+      - rk3588-max
     kernels:
-      "6.12": reserved
+      "6.18": implemented

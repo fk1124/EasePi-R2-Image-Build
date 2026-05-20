@@ -10,7 +10,7 @@ rootfs/fedora/          Fedora dnf installroot rootfs, implemented
 rootfs/archlinuxarm/    Arch Linux ARM pacman rootfs, implemented
 rootfs/kali/            Kali ARM debootstrap rootfs, implemented
 rootfs/fnos/            FNOS rootfs, reserved
-rootfs/openwrt/         OpenWrt image integration, reserved
+rootfs/openwrt/         OpenWrt 24/25 custom 6.18 profile, designed
 ```
 
 Keep distro package lists and source definitions here. Build stages should read
