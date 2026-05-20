@@ -369,10 +369,8 @@ prefetch_oras_tooling() {
         -o "${tmp_dir}/oras.tar.gz" \
         "${oras_url}"; then
         rm -rf "${tmp_dir}"
-        msg "ERROR: failed to download ORAS tooling."
-        msg "You can test manually:"
-        msg "  curl -I ${oras_url}"
-        exit 1
+        msg "WARN: failed to prefetch ORAS tooling, continue with Armbian default behavior."
+        return 0
     fi
 
     tar -xf "${tmp_dir}/oras.tar.gz" -C "${tmp_dir}" oras

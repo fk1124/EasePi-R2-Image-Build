@@ -28,7 +28,7 @@ sudo apt install -y git curl wget rsync unzip xz-utils ca-certificates
 sudo apt install -y build-essential gcc g++ make bc bison flex
 sudo apt install -y libssl-dev libncurses-dev python3 python3-pip python3-setuptools
 sudo apt install -y file cpio qemu-user-static binfmt-support debootstrap
-sudo apt install -y parted dosfstools e2fsprogs util-linux u-boot-tools
+sudo apt install -y parted gdisk dosfstools e2fsprogs util-linux u-boot-tools
 sudo apt install -y zstd
 ```
 
