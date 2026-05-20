@@ -6,15 +6,12 @@ Current implemented BSP stages:
 00-env.sh           dependency and directory checks
 10-build-bsp.sh     Armbian BSP package build
 20-make-rootfs.sh   Debian rootfs bootstrap
+20-make-alpine-rootfs.sh       Alpine minirootfs + apk package bootstrap
+20-make-fedora-rootfs.sh       Fedora dnf installroot bootstrap
+20-make-archlinuxarm-rootfs.sh Arch Linux ARM tarball + pacman bootstrap
 30-install-bsp.sh   kernel, modules, boot files, account, and network install
+30-install-portable-bsp.sh     non-dpkg BSP extraction and initramfs install
 40-pack-image.sh    GPT image packing, U-Boot writing, compression
-```
-
-Planned Alpine stages:
-
-```text
-20-make-alpine-rootfs.sh   apk-based Alpine arm64 rootfs bootstrap
-30-install-alpine-bsp.sh   kernel, firmware, boot files, and OpenRC services
 ```
 
 Future adapters should keep these boundaries:

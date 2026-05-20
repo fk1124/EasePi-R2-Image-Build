@@ -1,0 +1,39 @@
+# Base system
+alpine-base
+openrc
+busybox-initscripts
+mdev-conf
+mkinitfs
+kmod
+util-linux
+e2fsprogs
+e2fsprogs-extra
+dosfstools
+ca-certificates
+tzdata
+sudo
+shadow
+
+# SSH and basic tools
+openssh
+curl
+wget
+rsync
+nano
+less
+xz
+tar
+gzip
+file
+
+# Network
+ifupdown-ng
+iproute2
+iputils
+ethtool
+nftables
+iptables
+dnsmasq
+bridge-utils
+wpa_supplicant
+hostapd

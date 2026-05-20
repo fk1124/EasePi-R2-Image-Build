@@ -5,10 +5,10 @@ Each system family gets its own directory under `rootfs/`.
 ```text
 rootfs/debian/          Debian BSP packed-image rootfs, implemented
 rootfs/ubuntu/          Ubuntu BSP packed-image rootfs, wired
-rootfs/alpine/          Alpine Linux rootfs command contract, adapter pending
-rootfs/fedora/          Fedora rootfs, reserved
-rootfs/archlinuxarm/    Arch Linux ARM rootfs, reserved
-rootfs/kali/            Kali ARM rootfs, reserved
+rootfs/alpine/          Alpine Linux apk rootfs, implemented
+rootfs/fedora/          Fedora dnf installroot rootfs, implemented
+rootfs/archlinuxarm/    Arch Linux ARM pacman rootfs, implemented
+rootfs/kali/            Kali ARM debootstrap rootfs, implemented
 rootfs/fnos/            FNOS rootfs, reserved
 rootfs/openwrt/         OpenWrt image integration, reserved
 ```

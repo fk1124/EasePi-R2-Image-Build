@@ -22,33 +22,64 @@ case "${DIST}" in
         COMPONENTS="main,restricted,universe,multiverse"
         MIRROR="${UBUNTU_MIRROR:-http://ports.ubuntu.com/ubuntu-ports}"
         ;;
+    kali)
+        COMPONENTS="main,contrib,non-free,non-free-firmware"
+        MIRROR="${KALI_MIRROR:-http://http.kali.org/kali}"
+        ;;
     *) echo "ERROR: unsupported DIST: ${DIST}"; exit 1 ;;
 esac
+
+BOOTSTRAP_RELEASE="${RELEASE}"
+if [ "${DIST}" = "kali" ] && [ "${RELEASE}" = "rolling" ]; then
+    BOOTSTRAP_RELEASE="kali-rolling"
+fi
 
 printf '\n[2/4] Create %s %s arm64 rootfs\n' "${DIST}" "${RELEASE}"
 printf 'Rootfs directory: %s\n' "${ROOTFS_DIR}"
 
-DEBOOTSTRAP_SCRIPT="/usr/share/debootstrap/scripts/${RELEASE}"
+DEBOOTSTRAP_SCRIPT="/usr/share/debootstrap/scripts/${BOOTSTRAP_RELEASE}"
 if [ ! -e "${DEBOOTSTRAP_SCRIPT}" ]; then
-    echo "ERROR: this host's debootstrap does not support release '${RELEASE}'."
-    echo "Missing debootstrap script: ${DEBOOTSTRAP_SCRIPT}"
-    echo
-    echo "Please upgrade debootstrap, or build on a newer Debian/Ubuntu host/container"
-    echo "that already knows ${DIST} ${RELEASE}."
-    exit 1
+    if [ "${DIST}" = "kali" ] && [ "${BOOTSTRAP_RELEASE}" = "kali-rolling" ] && [ -e "/usr/share/debootstrap/scripts/sid" ]; then
+        DEBOOTSTRAP_DIR="${REPO_DIR}/output/tmp/debootstrap-scripts"
+        ${SUDO} rm -rf "${DEBOOTSTRAP_DIR}"
+        ${SUDO} mkdir -p "${DEBOOTSTRAP_DIR}/scripts"
+        ${SUDO} cp -a /usr/share/debootstrap/* "${DEBOOTSTRAP_DIR}/"
+        ${SUDO} ln -s sid "${DEBOOTSTRAP_DIR}/scripts/kali-rolling"
+        export DEBOOTSTRAP_DIR
+        DEBOOTSTRAP_SCRIPT="${DEBOOTSTRAP_DIR}/scripts/${BOOTSTRAP_RELEASE}"
+    else
+        echo "ERROR: this host's debootstrap does not support release '${RELEASE}'."
+        echo "Missing debootstrap script: ${DEBOOTSTRAP_SCRIPT}"
+        echo
+        echo "Please upgrade debootstrap, or build on a newer Debian/Ubuntu host/container"
+        echo "that already knows ${DIST} ${RELEASE}."
+        exit 1
+    fi
 fi
 
 ${SUDO} rm -rf "${ROOTFS_DIR}"
 ${SUDO} mkdir -p "${ROOTFS_DIR}"
 
-${SUDO} debootstrap \
+DEBOOTSTRAP_ARGS=(
     --arch=arm64 \
     --foreign \
     --variant=minbase \
     --components="${COMPONENTS}" \
-    "${RELEASE}" \
+    "${BOOTSTRAP_RELEASE}" \
     "${ROOTFS_DIR}" \
     "${MIRROR}"
+)
+
+if [ "${DIST}" = "kali" ]; then
+    if [ -f /usr/share/keyrings/kali-archive-keyring.gpg ]; then
+        DEBOOTSTRAP_ARGS=(--keyring=/usr/share/keyrings/kali-archive-keyring.gpg "${DEBOOTSTRAP_ARGS[@]}")
+    else
+        echo "WARN: kali-archive-keyring not found on host; using --no-check-gpg for Kali bootstrap."
+        DEBOOTSTRAP_ARGS=(--no-check-gpg "${DEBOOTSTRAP_ARGS[@]}")
+    fi
+fi
+
+${SUDO} debootstrap "${DEBOOTSTRAP_ARGS[@]}"
 
 ${SUDO} cp /usr/bin/qemu-aarch64-static "${ROOTFS_DIR}/usr/bin/"
 ${SUDO} chroot "${ROOTFS_DIR}" /debootstrap/debootstrap --second-stage
@@ -121,8 +152,16 @@ EOF_DESKTOP_GROWROOT
         ;;
 esac
 
-${SUDO} chroot "${ROOTFS_DIR}" /bin/bash -e <<'CHROOT'
+${SUDO} chroot "${ROOTFS_DIR}" /usr/bin/env \
+  DIST="${DIST}" \
+  /bin/bash -e <<'CHROOT'
 export DEBIAN_FRONTEND=noninteractive
+
+if [ "${DIST}" = "kali" ]; then
+  apt-get -o Acquire::AllowInsecureRepositories=true update || true
+  apt-get install -y --allow-unauthenticated kali-archive-keyring || true
+fi
+
 apt-get update
 cat /tmp/packages-minimal.txt /tmp/packages-extra.txt | grep -vE '^\s*(#|$)' | xargs -r apt-get install -y --no-install-recommends
 apt-get clean

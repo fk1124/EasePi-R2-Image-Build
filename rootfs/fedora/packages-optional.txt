@@ -1,0 +1,5 @@
+# GPU / diagnostics packages that may move between Fedora releases
+mesa-dri-drivers
+mesa-vulkan-drivers
+vulkan-tools
+mesa-utils

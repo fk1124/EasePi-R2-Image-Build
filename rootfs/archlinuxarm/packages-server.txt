@@ -1,0 +1,6 @@
+# Server / router extras
+avahi
+smartmontools
+nvme-cli
+wireguard-tools
+ipset

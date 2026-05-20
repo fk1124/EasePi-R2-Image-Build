@@ -7,6 +7,9 @@ image_types:
   debian: [minimal, server, desktop]
   ubuntu: [minimal, server, desktop]
   alpine: [minimal, server]
+  fedora: [minimal, server]
+  archlinuxarm: [minimal, server]
+  kali: [minimal, server]
   reserved: []
 
 kernel_aliases:
@@ -15,7 +18,7 @@ kernel_aliases:
   "7.0": linux7
 
 status:
-  implemented: "Build entry exists and is listed in README."
+  implemented: "Build adapter exists, is routed by build-image.sh, and is listed in README."
   designed: "Command contract is documented and routed, but the adapter exits TODO."
   reserved: "Matrix target is planned, but the adapter is not implemented yet."
 
@@ -138,31 +141,31 @@ targets:
     primary_kernel: "6.18"
     secondary_kernel: null
     kernels:
-      "6.18": designed
+      "6.18": implemented
 
-  - system: Fedora
+  - system: fedora
     release: latest
     note: Fedora 44
     primary_kernel: "6.18"
     secondary_kernel: null
     kernels:
-      "6.18": reserved
+      "6.18": implemented
 
-  - system: Arch Linux ARM
+  - system: archlinuxarm
     release: rolling
     note: pacman rolling release
     primary_kernel: "6.18"
     secondary_kernel: null
     kernels:
-      "6.18": reserved
+      "6.18": implemented
 
-  - system: Kali ARM
+  - system: kali
     release: rolling
     note: security testing Debian-family rolling rootfs
     primary_kernel: "6.18"
     secondary_kernel: null
     kernels:
-      "6.18": reserved
+      "6.18": implemented
 
   - system: OpenWrt
     release: "24"

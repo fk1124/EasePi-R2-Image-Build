@@ -1,0 +1,54 @@
+# Base system
+basesystem
+systemd
+systemd-udev
+systemd-networkd
+passwd
+shadow-utils
+setup
+rootfiles
+sudo
+dracut
+kmod
+util-linux
+e2fsprogs
+dosfstools
+uboot-tools
+ca-certificates
+tzdata
+
+# SSH and basic tools
+openssh-server
+curl
+wget
+rsync
+vim-minimal
+nano
+less
+htop
+tmux
+git
+xz
+unzip
+file
+
+# Network
+iproute
+iputils
+ethtool
+nftables
+iptables
+dnsmasq
+bridge-utils
+ppp
+wpa_supplicant
+hostapd
+
+# Hardware helpers
+linux-firmware
+pciutils
+usbutils
+i2c-tools
+rfkill
+bluez
+v4l-utils

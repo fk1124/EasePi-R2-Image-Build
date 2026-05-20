@@ -12,7 +12,10 @@ Systems:
   armbian        Native Armbian image, routed to build.sh
   debian         Debian BSP packed image, routed to build-bsp-image.sh
   ubuntu         Ubuntu BSP packed image, routed to build-bsp-image.sh
-  alpine         Alpine Linux command contract, routed to build-alpine-image.sh
+  alpine         Alpine Linux BSP packed image, routed to build-rootfs-image.sh
+  fedora         Fedora BSP packed image, routed to build-rootfs-image.sh
+  archlinuxarm   Arch Linux ARM BSP packed image, routed to build-rootfs-image.sh
+  kali           Kali ARM BSP packed image, routed to build-rootfs-image.sh
 
 Kernel aliases:
   6.1 | vendor
@@ -21,13 +24,16 @@ Kernel aliases:
 
 Image types:
   minimal | server | desktop
-  Alpine reserves minimal | server only.
+  Alpine/Fedora/Arch/Kali currently support minimal | server.
 
 Examples:
   bash build-image.sh armbian bookworm 6.1 minimal
   bash build-image.sh armbian trixie 6.18 minimal
   bash build-image.sh debian trixie 6.18 minimal
   bash build-image.sh alpine stable 6.18 minimal
+  bash build-image.sh fedora latest 6.18 minimal
+  bash build-image.sh archlinuxarm rolling 6.18 minimal
+  bash build-image.sh kali rolling 6.18 minimal
 USAGE
 }
 
@@ -94,6 +100,27 @@ assert_supported_target() {
                     ;;
             esac
             ;;
+        fedora)
+            case "${RELEASE}:${KERNEL_PROFILE}" in
+                latest:current)
+                    return 0
+                    ;;
+            esac
+            ;;
+        archlinuxarm)
+            case "${RELEASE}:${KERNEL_PROFILE}" in
+                rolling:current)
+                    return 0
+                    ;;
+            esac
+            ;;
+        kali)
+            case "${RELEASE}:${KERNEL_PROFILE}" in
+                rolling:current)
+                    return 0
+                    ;;
+            esac
+            ;;
     esac
 
     not_ready "${SYSTEM} ${RELEASE} ${KERNEL} ${IMAGE_TYPE}"
@@ -149,9 +176,30 @@ case "${SYSTEM}" in
     alpine)
         case "${RELEASE}" in
             stable) ;;
-            *) not_ready "Alpine ${RELEASE} is not wired into build-alpine-image.sh yet." ;;
+            *) not_ready "Alpine ${RELEASE} is not wired into build-rootfs-image.sh yet." ;;
         esac
-        exec bash "${REPO_DIR}/build-alpine-image.sh" "${RELEASE}" "${KERNEL_PROFILE}" "${IMAGE_TYPE}"
+        exec bash "${REPO_DIR}/build-rootfs-image.sh" alpine "${RELEASE}" "${KERNEL_PROFILE}" "${IMAGE_TYPE}"
+        ;;
+    fedora)
+        case "${RELEASE}" in
+            latest) ;;
+            *) not_ready "Fedora ${RELEASE} is not wired into build-rootfs-image.sh yet." ;;
+        esac
+        exec bash "${REPO_DIR}/build-rootfs-image.sh" fedora "${RELEASE}" "${KERNEL_PROFILE}" "${IMAGE_TYPE}"
+        ;;
+    archlinuxarm)
+        case "${RELEASE}" in
+            rolling) ;;
+            *) not_ready "Arch Linux ARM ${RELEASE} is not wired into build-rootfs-image.sh yet." ;;
+        esac
+        exec bash "${REPO_DIR}/build-rootfs-image.sh" archlinuxarm "${RELEASE}" "${KERNEL_PROFILE}" "${IMAGE_TYPE}"
+        ;;
+    kali)
+        case "${RELEASE}" in
+            rolling) ;;
+            *) not_ready "Kali ARM ${RELEASE} is not wired into build-rootfs-image.sh yet." ;;
+        esac
+        exec bash "${REPO_DIR}/build-rootfs-image.sh" kali "${RELEASE}" "${KERNEL_PROFILE}" "${IMAGE_TYPE}"
         ;;
     *)
         not_ready "system ${SYSTEM}"

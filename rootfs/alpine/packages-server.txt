@@ -1,0 +1,10 @@
+# Server / router extras
+htop
+tmux
+git
+pciutils
+usbutils
+i2c-tools
+rfkill
+bluez
+v4l-utils

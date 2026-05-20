@@ -1,0 +1,5 @@
+# Firmware and diagnostics that may vary by Alpine stable branch
+linux-firmware-brcm
+linux-firmware-rtl_nic
+linux-firmware-other
+bluez-deprecated

@@ -1,0 +1,47 @@
+# Base system
+base
+sudo
+openssh
+ca-certificates
+mkinitcpio
+kmod
+util-linux
+e2fsprogs
+dosfstools
+uboot-tools
+
+# SSH and basic tools
+curl
+wget
+rsync
+vim
+nano
+less
+htop
+tmux
+git
+xz
+unzip
+file
+
+# Network
+iproute2
+iputils
+ethtool
+nftables
+iptables-nft
+dnsmasq
+bridge-utils
+ppp
+wpa_supplicant
+hostapd
+
+# Hardware helpers
+linux-firmware
+pciutils
+usbutils
+i2c-tools
+rfkill
+bluez
+bluez-utils
+v4l-utils

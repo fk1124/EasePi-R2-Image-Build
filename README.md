@@ -29,8 +29,11 @@ sudo apt install -y build-essential gcc g++ make bc bison flex
 sudo apt install -y libssl-dev libncurses-dev python3 python3-pip python3-setuptools
 sudo apt install -y file cpio qemu-user-static binfmt-support debootstrap
 sudo apt install -y parted gdisk dosfstools e2fsprogs util-linux u-boot-tools
-sudo apt install -y zstd
+sudo apt install -y zstd kmod
+sudo apt install -y dnf libarchive-tools
 ```
+
+`dnf` 主要用于 Fedora rootfs，`libarchive-tools` 提供 `bsdtar`，主要用于 Arch Linux ARM rootfs。
 
 ## 二、基础装备
 
@@ -44,7 +47,7 @@ GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git clone --depth=1 https://gi
 GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git clone https://github.com/fk1124/EasePi-R2-Image-Build.git
 
 cd EasePi-R2-Image-Build
-chmod +x build-image.sh build.sh build-bsp-image.sh build-alpine-image.sh scripts/*.sh
+chmod +x build-image.sh build.sh build-bsp-image.sh build-rootfs-image.sh build-alpine-image.sh scripts/*.sh
 ```
 拉取后的目录结构应该为：
 
@@ -55,7 +58,8 @@ chmod +x build-image.sh build.sh build-bsp-image.sh build-alpine-image.sh script
     ├── build-image.sh              # 统一构建入口
     ├── build.sh                    # Armbian 原生镜像入口
     ├── build-bsp-image.sh          # Debian / Ubuntu BSP 打包镜像入口
-    ├── build-alpine-image.sh       # Alpine 命令预留入口
+    ├── build-rootfs-image.sh       # Alpine / Fedora / Arch / Kali 打包镜像入口
+    ├── build-alpine-image.sh       # Alpine 兼容包装入口
     ├── configs/                    # 项目矩阵与目标配置
     ├── rootfs/                     # 各系统 rootfs 配置
     ├── scripts/                    # BSP 构建阶段脚本
@@ -79,7 +83,10 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 | Armbian trixie 6.18 minimal | 已接入 | `bash build-image.sh armbian trixie 6.18 minimal` |
 | Debian trixie 6.18 minimal | 已接入 | `bash build-image.sh debian trixie 6.18 minimal` |
 | Ubuntu noble 6.18 minimal | 已接入 | `bash build-image.sh ubuntu noble 6.18 minimal` |
-| Alpine stable 6.18 minimal | 命令已设计，适配未实现 | `bash build-image.sh alpine stable 6.18 minimal` |
+| Alpine stable 6.18 minimal | 已接入 | `bash build-image.sh alpine stable 6.18 minimal` |
+| Fedora latest 6.18 minimal | 已接入 | `bash build-image.sh fedora latest 6.18 minimal` |
+| Arch Linux ARM rolling 6.18 minimal | 已接入 | `bash build-image.sh archlinuxarm rolling 6.18 minimal` |
+| Kali ARM rolling 6.18 minimal | 已接入 | `bash build-image.sh kali rolling 6.18 minimal` |
 
 ### 2. 完整项目矩阵
 
@@ -98,10 +105,10 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 | ubuntu | noble | Ubuntu 24.04 LTS BSP 打包镜像 | 6.18 | 7.0 | [6.18](#cmd-ubuntu-noble-618) / [7.0](#cmd-ubuntu-noble-70) |
 | ubuntu | resolute | Ubuntu 26.04 LTS BSP 打包镜像 / 前瞻 | 7.0 | - | [7.0](#cmd-ubuntu-resolute-70) |
 | FNOS | stable | 飞牛OS | FN专用内核 | - |  |
-| alpine | stable | Alpine Linux / apk 轻量 rootfs / 命令已设计 | 6.18 | - | [6.18](#cmd-alpine-stable-618) |
-| Fedora | latest | Fedora 44 | 6.18 | - |  |
-| Arch Linux ARM | rolling | pacman / 滚动发行 / 不追发行版内核 | 6.18 | - |  |
-| Kali ARM | rolling | 安全测试 / Debian 系 / 不追滚动内核 | 6.18 | - |  |
+| alpine | stable | Alpine Linux / apk 轻量 rootfs | 6.18 | - | [6.18](#cmd-alpine-stable-618) |
+| fedora | latest | Fedora 44 / dnf installroot | 6.18 | - | [6.18](#cmd-fedora-latest-618) |
+| archlinuxarm | rolling | Arch Linux ARM / pacman rolling rootfs | 6.18 | - | [6.18](#cmd-archlinuxarm-rolling-618) |
+| kali | rolling | Kali ARM / Debian-family security rootfs | 6.18 | - | [6.18](#cmd-kali-rolling-618) |
 | OpenWrt | 24 | OpenWrt 24 | 6.6 | - |  |
 | OpenWrt | 25 | OpenWrt 25 | 6.12 | - |  |
 
@@ -313,7 +320,7 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 | server | `bash build-image.sh ubuntu resolute 7.0 server` | ⭐ |  | 前瞻服务器镜像，适合服务组件兼容性验证 |
 | desktop | `bash build-image.sh ubuntu resolute 7.0 desktop` | ⭐ |  | 前瞻 XFCE 桌面，适合图形栈兼容性验证 |
 
-#### Alpine Linux 轻量镜像命令设计
+#### Alpine / Fedora / Arch / Kali 轻量镜像
 
 <a id="cmd-alpine-stable-618"></a>
 
@@ -321,19 +328,43 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 
 | 类型 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
 | --- | --- | --- | --- | --- |
-| minimal | `bash build-image.sh alpine stable 6.18 minimal` | ⭐⭐ | 命令已设计，适配未实现 | Alpine stable apk 基础 rootfs，优先用于轻量启动验证 |
-| server | `bash build-image.sh alpine stable 6.18 server` | ⭐ | 命令已设计，适配未实现 | 在 minimal 基础上追加路由/运维组件，后续随 apk/OpenRC 适配接入 |
+| minimal | `bash build-image.sh alpine stable 6.18 minimal` | ⭐⭐⭐ | 已接入 | Alpine latest-stable apk 基础 rootfs，OpenRC 启动 |
+| server | `bash build-image.sh alpine stable 6.18 server` | ⭐⭐ | 已接入 | 在 minimal 基础上追加路由/运维组件 |
 
-当前 Alpine 命令已经通过 `build-image.sh` 统一入口预留，但 `build-alpine-image.sh` 仍会以 TODO 状态退出，不会生成镜像。后续实现时会优先走 `apk` rootfs bootstrap，并单独编写 OpenRC 网络/服务策略，不直接复用 Debian / Ubuntu 的 systemd overlay。
+<a id="cmd-fedora-latest-618"></a>
+
+##### fedora latest 6.18
+
+| 类型 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh fedora latest 6.18 minimal` | ⭐⭐⭐ | 已接入 | Fedora 44 aarch64 installroot，systemd-networkd 启动 |
+| server | `bash build-image.sh fedora latest 6.18 server` | ⭐⭐ | 已接入 | 在 minimal 基础上追加服务器/路由组件 |
+
+<a id="cmd-archlinuxarm-rolling-618"></a>
+
+##### archlinuxarm rolling 6.18
+
+| 类型 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh archlinuxarm rolling 6.18 minimal` | ⭐⭐⭐ | 已接入 | Arch Linux ARM generic AArch64 rootfs，pacman rolling |
+| server | `bash build-image.sh archlinuxarm rolling 6.18 server` | ⭐⭐ | 已接入 | 在 minimal 基础上追加服务器/路由组件 |
+
+<a id="cmd-kali-rolling-618"></a>
+
+##### kali rolling 6.18
+
+| 类型 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh kali rolling 6.18 minimal` | ⭐⭐⭐ | 已接入 | Kali ARM kali-rolling debootstrap rootfs |
+| server | `bash build-image.sh kali rolling 6.18 server` | ⭐⭐ | 已接入 | 在 minimal 基础上追加服务器/路由组件 |
+
+这四类镜像都会复用 `scripts/10-build-bsp.sh` 生成的 Armbian BSP。Alpine/Fedora/Arch Linux ARM 通过 `scripts/30-install-portable-bsp.sh` 提取 BSP deb 内容并用各自工具生成 initramfs；Kali ARM 走 Debian-family `dpkg` 安装路径。
 
 #### 其他系统预留
 
 | 系统 | 发行版 | 内核 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
 | --- | --- | --- | --- | --- | --- | --- |
 | FNOS | stable | FN专用内核 |  |  | 未接入 | FNOS 路线预留 |
-| Fedora | latest | 6.18 |  |  | 未接入 | Fedora rootfs 路线预留 |
-| Arch Linux ARM | rolling | 6.18 |  |  | 未接入 | 滚动发行 rootfs 路线预留 |
-| Kali ARM | rolling | 6.18 |  |  | 未接入 | 安全测试 rootfs 路线预留 |
 | OpenWrt | 24 | 6.6 |  |  | 未接入 | OpenWrt 24 路线预留 |
 | OpenWrt | 25 | 6.12 |  |  | 未接入 | OpenWrt 25 路线预留 |
 
@@ -345,7 +376,7 @@ Armbian 原生镜像产物：
 ~/rk3588_build/build/output/images/
 ```
 
-Debian / Ubuntu BSP 打包镜像产物：
+Debian / Ubuntu / Alpine / Fedora / Arch Linux ARM / Kali ARM BSP 打包镜像产物：
 
 ```bash
 ~/rk3588_build/EasePi-R2-Image-Build/output/images/
@@ -357,16 +388,21 @@ Debian / Ubuntu BSP 打包镜像产物：
 EasePi-R2-debian-trixie-current-minimal.img
 EasePi-R2-debian-trixie-current-minimal.img.xz
 EasePi-R2-debian-trixie-current-minimal.img.xz.sha256
+EasePi-R2-alpine-stable-current-minimal.img.xz
+EasePi-R2-fedora-latest-current-minimal.img.xz
+EasePi-R2-archlinuxarm-rolling-current-minimal.img.xz
+EasePi-R2-kali-rolling-current-minimal.img.xz
 ```
 
 ## 五、登录账户说明
 
-Debian / Ubuntu BSP 打包镜像默认不创建公开固定账号。构建时需要设置 root 密码，脚本会在交互终端中提示输入两次。
+Debian / Ubuntu / Alpine / Fedora / Arch Linux ARM / Kali ARM BSP 打包镜像默认不创建公开固定账号。构建时需要设置 root 密码，脚本会在交互终端中提示输入两次。
 
 也可以通过环境变量提前传入 root 密码：
 
 ```bash
 ROOT_PASSWORD='你的root密码' bash build-image.sh debian trixie 6.18 minimal
+ROOT_PASSWORD='你的root密码' bash build-image.sh alpine stable 6.18 minimal
 ```
 
 桌面专用预设脚本：
@@ -445,7 +481,8 @@ eMMC / TF / USB / PCIe
 build-image.sh                 统一入口，负责系统/发行版/内核/镜像类型路由
 build.sh                       Armbian 原生镜像适配层
 build-bsp-image.sh             Debian / Ubuntu BSP 打包镜像适配层
-build-alpine-image.sh          Alpine Linux 命令预留适配层
+build-rootfs-image.sh          Alpine / Fedora / Arch / Kali BSP 打包镜像适配层
+build-alpine-image.sh          Alpine 兼容包装入口
 configs/build-matrix.yaml      项目目标矩阵
 rootfs/<system>/               各系统 rootfs、软件源、包列表、镜像类型策略
 scripts/                       BSP 构建阶段脚本
@@ -461,7 +498,7 @@ userpatches/                   Armbian 板级、内核、U-Boot、overlay 适配
 4. 最后把命令填回 README
 ```
 
-这样后续扩 Ubuntu、Alpine、OpenWrt 时，命令入口、rootfs 逻辑、BSP 打包和板级补丁不会混在一起。
+这样后续扩 FNOS、OpenWrt 或其他 rootfs 时，命令入口、rootfs 逻辑、BSP 打包和板级补丁不会混在一起。
 
 ## 八、缓存和清理
 
@@ -478,6 +515,10 @@ output/bsp/ubuntu-jammy-current/
 output/bsp/ubuntu-noble-current/
 output/bsp/ubuntu-noble-linux7/
 output/bsp/ubuntu-resolute-linux7/
+output/bsp/alpine-stable-current/
+output/bsp/fedora-latest-current/
+output/bsp/archlinuxarm-rolling-current/
+output/bsp/kali-rolling-current/
 ```
 
 如果已经有对应 BSP，脚本会优先复用，避免每次都重新编译内核。BSP 缓存按 `系统-发行版-内核` 隔离，避免不同发行版复用或覆盖同一组 BSP deb。
@@ -505,6 +546,7 @@ sudo rm -rf output work
 | 变量 | 说明 | 示例 |
 | --- | --- | --- |
 | `ARMBIAN_BUILD_DIR` | 指定 Armbian Build 目录 | `/root/rk3588_build/build` |
+| `ARMBIAN_BSP_RELEASE` | 非 Debian/Ubuntu rootfs 编译 BSP 时使用的 Armbian 发行版 | `trixie` |
 | `CPUTHREADS` | 指定编译线程数 | `8` |
 | `REGIONAL_MIRROR` | 指定区域镜像策略 | `china` |
 | `MAINLINE_MIRROR` | 指定主线内核镜像 | `google` / `tuna` / `bfsu` |
@@ -515,6 +557,12 @@ sudo rm -rf output work
 | `CREATE_USER` | 是否创建普通用户 | `yes` / `no` |
 | `IMAGE_USER` | 普通用户名 | `fk` |
 | `IMAGE_PASSWORD` | 普通用户密码 | 自定义 |
+| `ALPINE_MIRROR` | Alpine apk / minirootfs 镜像 | `https://dl-cdn.alpinelinux.org/alpine` |
+| `FEDORA_VERSION` | Fedora latest 目标实际版本 | `44` |
+| `FEDORA_MIRROR` | Fedora 仓库镜像 | `https://download.fedoraproject.org/pub/fedora/linux` |
+| `ARCHLINUXARM_TARBALL_URL` | Arch Linux ARM rootfs tarball | `http://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz` |
+| `KALI_MIRROR` | Kali rolling 仓库镜像 | `http://http.kali.org/kali` |
+| `EASEPI_R2_DRY_RUN` | 只验证 portable rootfs 目标路由，不执行构建 | `yes` |
 
 示例：
 

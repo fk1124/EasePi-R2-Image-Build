@@ -6,13 +6,28 @@ export REPO_DIR
 
 mkdir -p "${REPO_DIR}/work" "${REPO_DIR}/output/bsp" "${REPO_DIR}/output/rootfs" "${REPO_DIR}/output/images" "${REPO_DIR}/output/tmp"
 
+DIST="${DIST:-debian}"
+
 need_cmds=(
   git curl wget rsync tar xzcat xz zstd
-  debootstrap qemu-aarch64-static update-binfmts
+  qemu-aarch64-static update-binfmts
   parted sgdisk losetup mkfs.vfat mkfs.ext4 e2fsck resize2fs dumpe2fs blkid findmnt
-  chroot dpkg-deb dd sed awk grep
+  chroot dpkg-deb dd sed awk grep depmod
   mkimage
 )
+
+case "${DIST}" in
+  debian|ubuntu|kali)
+    need_cmds+=(debootstrap)
+    ;;
+  fedora)
+    if ! command -v dnf5 >/dev/null 2>&1 && ! command -v dnf >/dev/null 2>&1; then
+      need_cmds+=(dnf)
+    fi
+    ;;
+  alpine|archlinuxarm)
+    ;;
+esac
 
 missing=()
 for c in "${need_cmds[@]}"; do
@@ -32,7 +47,11 @@ sudo apt install -y build-essential gcc g++ make bc bison flex
 sudo apt install -y libssl-dev libncurses-dev python3 python3-pip python3-setuptools
 sudo apt install -y file cpio qemu-user-static binfmt-support debootstrap
 sudo apt install -y parted gdisk dosfstools e2fsprogs util-linux u-boot-tools
-sudo apt install -y zstd
+sudo apt install -y zstd kmod
+
+# Extra tools for optional rootfs targets:
+#   Fedora: sudo apt install -y dnf
+#   Arch Linux ARM: sudo apt install -y libarchive-tools
 APT
     exit 1
 fi

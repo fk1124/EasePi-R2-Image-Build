@@ -1,0 +1,4 @@
+# GPU / diagnostics packages that may vary in Arch Linux ARM
+mesa
+vulkan-panfrost
+vulkan-tools
