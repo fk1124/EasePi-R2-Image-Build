@@ -6,6 +6,7 @@ image_types:
   armbian: [minimal, server, desktop]
   debian: [minimal, server, desktop]
   ubuntu: [minimal, server, desktop]
+  alpine: [minimal, server]
   reserved: []
 
 kernel_aliases:
@@ -15,6 +16,7 @@ kernel_aliases:
 
 status:
   implemented: "Build entry exists and is listed in README."
+  designed: "Command contract is documented and routed, but the adapter exits TODO."
   reserved: "Matrix target is planned, but the adapter is not implemented yet."
 
 targets:
@@ -130,13 +132,13 @@ targets:
     kernels:
       "FN dedicated": reserved
 
-  - system: Alpine Linux
+  - system: alpine
     release: stable
-    note: apk lightweight rootfs
+    note: Alpine Linux stable apk lightweight rootfs
     primary_kernel: "6.18"
     secondary_kernel: null
     kernels:
-      "6.18": reserved
+      "6.18": designed
 
   - system: Fedora
     release: latest

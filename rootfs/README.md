@@ -5,7 +5,7 @@ Each system family gets its own directory under `rootfs/`.
 ```text
 rootfs/debian/          Debian BSP packed-image rootfs, implemented
 rootfs/ubuntu/          Ubuntu BSP packed-image rootfs, wired
-rootfs/alpine/          Alpine Linux rootfs, reserved
+rootfs/alpine/          Alpine Linux rootfs command contract, adapter pending
 rootfs/fedora/          Fedora rootfs, reserved
 rootfs/archlinuxarm/    Arch Linux ARM rootfs, reserved
 rootfs/kali/            Kali ARM rootfs, reserved

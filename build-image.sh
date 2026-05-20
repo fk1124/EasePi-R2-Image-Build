@@ -12,6 +12,7 @@ Systems:
   armbian        Native Armbian image, routed to build.sh
   debian         Debian BSP packed image, routed to build-bsp-image.sh
   ubuntu         Ubuntu BSP packed image, routed to build-bsp-image.sh
+  alpine         Alpine Linux command contract, routed to build-alpine-image.sh
 
 Kernel aliases:
   6.1 | vendor
@@ -20,11 +21,13 @@ Kernel aliases:
 
 Image types:
   minimal | server | desktop
+  Alpine reserves minimal | server only.
 
 Examples:
   bash build-image.sh armbian bookworm 6.1 minimal
   bash build-image.sh armbian trixie 6.18 minimal
   bash build-image.sh debian trixie 6.18 minimal
+  bash build-image.sh alpine stable 6.18 minimal
 USAGE
 }
 
@@ -37,7 +40,7 @@ fail_usage() {
 
 not_ready() {
     echo "TODO: $*" >&2
-    echo "This target is reserved in the project matrix, but its build adapter is not implemented yet." >&2
+    echo "This target is listed in the project matrix, but its build adapter is not implemented yet." >&2
     exit 2
 }
 
@@ -80,6 +83,13 @@ assert_supported_target() {
         ubuntu)
             case "${RELEASE}:${KERNEL_PROFILE}" in
                 jammy:vendor|jammy:current|noble:current|noble:linux7|resolute:linux7)
+                    return 0
+                    ;;
+            esac
+            ;;
+        alpine)
+            case "${RELEASE}:${KERNEL_PROFILE}" in
+                stable:current)
                     return 0
                     ;;
             esac
@@ -135,6 +145,13 @@ case "${SYSTEM}" in
             *) not_ready "Ubuntu BSP ${RELEASE} is not wired into build-bsp-image.sh yet." ;;
         esac
         exec bash "${REPO_DIR}/build-bsp-image.sh" ubuntu "${RELEASE}" "${KERNEL_PROFILE}" "${IMAGE_TYPE}"
+        ;;
+    alpine)
+        case "${RELEASE}" in
+            stable) ;;
+            *) not_ready "Alpine ${RELEASE} is not wired into build-alpine-image.sh yet." ;;
+        esac
+        exec bash "${REPO_DIR}/build-alpine-image.sh" "${RELEASE}" "${KERNEL_PROFILE}" "${IMAGE_TYPE}"
         ;;
     *)
         not_ready "system ${SYSTEM}"

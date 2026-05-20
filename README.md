@@ -44,7 +44,7 @@ GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git clone --depth=1 https://gi
 GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git clone https://github.com/fk1124/EasePi-R2-Image-Build.git
 
 cd EasePi-R2-Image-Build
-chmod +x build-image.sh build.sh build-bsp-image.sh scripts/*.sh
+chmod +x build-image.sh build.sh build-bsp-image.sh build-alpine-image.sh scripts/*.sh
 ```
 拉取后的目录结构应该为：
 
@@ -55,6 +55,7 @@ chmod +x build-image.sh build.sh build-bsp-image.sh scripts/*.sh
     ├── build-image.sh              # 统一构建入口
     ├── build.sh                    # Armbian 原生镜像入口
     ├── build-bsp-image.sh          # Debian / Ubuntu BSP 打包镜像入口
+    ├── build-alpine-image.sh       # Alpine 命令预留入口
     ├── configs/                    # 项目矩阵与目标配置
     ├── rootfs/                     # 各系统 rootfs 配置
     ├── scripts/                    # BSP 构建阶段脚本
@@ -78,6 +79,7 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 | Armbian trixie 6.18 minimal | 已接入 | `bash build-image.sh armbian trixie 6.18 minimal` |
 | Debian trixie 6.18 minimal | 已接入 | `bash build-image.sh debian trixie 6.18 minimal` |
 | Ubuntu noble 6.18 minimal | 已接入 | `bash build-image.sh ubuntu noble 6.18 minimal` |
+| Alpine stable 6.18 minimal | 命令已设计，适配未实现 | `bash build-image.sh alpine stable 6.18 minimal` |
 
 ### 2. 完整项目矩阵
 
@@ -96,7 +98,7 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 | ubuntu | noble | Ubuntu 24.04 LTS BSP 打包镜像 | 6.18 | 7.0 | [6.18](#cmd-ubuntu-noble-618) / [7.0](#cmd-ubuntu-noble-70) |
 | ubuntu | resolute | Ubuntu 26.04 LTS BSP 打包镜像 / 前瞻 | 7.0 | - | [7.0](#cmd-ubuntu-resolute-70) |
 | FNOS | stable | 飞牛OS | FN专用内核 | - |  |
-| Alpine Linux | stable | apk / 轻量 rootfs | 6.18 | - |  |
+| alpine | stable | Alpine Linux / apk 轻量 rootfs / 命令已设计 | 6.18 | - | [6.18](#cmd-alpine-stable-618) |
 | Fedora | latest | Fedora 44 | 6.18 | - |  |
 | Arch Linux ARM | rolling | pacman / 滚动发行 / 不追发行版内核 | 6.18 | - |  |
 | Kali ARM | rolling | 安全测试 / Debian 系 / 不追滚动内核 | 6.18 | - |  |
@@ -311,12 +313,24 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 | server | `bash build-image.sh ubuntu resolute 7.0 server` | ⭐ |  | 前瞻服务器镜像，适合服务组件兼容性验证 |
 | desktop | `bash build-image.sh ubuntu resolute 7.0 desktop` | ⭐ |  | 前瞻 XFCE 桌面，适合图形栈兼容性验证 |
 
+#### Alpine Linux 轻量镜像命令设计
+
+<a id="cmd-alpine-stable-618"></a>
+
+##### alpine stable 6.18
+
+| 类型 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
+| --- | --- | --- | --- | --- |
+| minimal | `bash build-image.sh alpine stable 6.18 minimal` | ⭐⭐ | 命令已设计，适配未实现 | Alpine stable apk 基础 rootfs，优先用于轻量启动验证 |
+| server | `bash build-image.sh alpine stable 6.18 server` | ⭐ | 命令已设计，适配未实现 | 在 minimal 基础上追加路由/运维组件，后续随 apk/OpenRC 适配接入 |
+
+当前 Alpine 命令已经通过 `build-image.sh` 统一入口预留，但 `build-alpine-image.sh` 仍会以 TODO 状态退出，不会生成镜像。后续实现时会优先走 `apk` rootfs bootstrap，并单独编写 OpenRC 网络/服务策略，不直接复用 Debian / Ubuntu 的 systemd overlay。
+
 #### 其他系统预留
 
 | 系统 | 发行版 | 内核 | 编译命令 | 推荐指数 | 验证 | 所选镜像说明 |
 | --- | --- | --- | --- | --- | --- | --- |
 | FNOS | stable | FN专用内核 |  |  | 未接入 | FNOS 路线预留 |
-| Alpine Linux | stable | 6.18 |  |  | 未接入 | 轻量 rootfs 路线预留 |
 | Fedora | latest | 6.18 |  |  | 未接入 | Fedora rootfs 路线预留 |
 | Arch Linux ARM | rolling | 6.18 |  |  | 未接入 | 滚动发行 rootfs 路线预留 |
 | Kali ARM | rolling | 6.18 |  |  | 未接入 | 安全测试 rootfs 路线预留 |
@@ -431,6 +445,7 @@ eMMC / TF / USB / PCIe
 build-image.sh                 统一入口，负责系统/发行版/内核/镜像类型路由
 build.sh                       Armbian 原生镜像适配层
 build-bsp-image.sh             Debian / Ubuntu BSP 打包镜像适配层
+build-alpine-image.sh          Alpine Linux 命令预留适配层
 configs/build-matrix.yaml      项目目标矩阵
 rootfs/<system>/               各系统 rootfs、软件源、包列表、镜像类型策略
 scripts/                       BSP 构建阶段脚本
