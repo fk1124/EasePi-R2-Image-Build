@@ -75,6 +75,12 @@ the profile enables the kernel symbols and preinstalls userspace/kmod choices
 where OpenWrt feeds provide them, while board-specific acceleration may still
 need a later RK3588 patch stack.
 
+When building from a root shell, the adapter defaults
+`OPENWRT_FORCE_UNSAFE_CONFIGURE=auto` and exports `FORCE_UNSAFE_CONFIGURE=1`.
+This avoids GNU tar's configure-time root guard during `tools/tar/compile`.
+Set `OPENWRT_FORCE_UNSAFE_CONFIGURE=no` to disable the workaround, or build as a
+normal user when you want the cleanest OpenWrt build environment.
+
 Recommended commands:
 
 ```bash

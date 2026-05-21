@@ -17,6 +17,7 @@ Important environment variables:
   OPENWRT_KERNEL_VERSION=6.18          Exact kernel version label
   OPENWRT_KERNEL_HASH=<sha256|skip>    Kernel tarball hash; defaults to skip for bring-up
   OPENWRT_REFRESH_GENERATED_CONFIGS=yes Refresh generated config-6.18 files on rerun
+  OPENWRT_FORCE_UNSAFE_CONFIGURE=auto  Auto-enable GNU configure root workaround
   OPENWRT_CONFIG_ONLY=yes              Stop after OpenWrt .config generation
   EASEPI_R2_DRY_RUN=yes                Print resolved plan without cloning/building
 USAGE
@@ -39,6 +40,35 @@ is_yes() {
     case "${1:-}" in
         1|y|Y|yes|YES|true|TRUE|on|ON) return 0 ;;
         *) return 1 ;;
+    esac
+}
+
+current_uid() {
+    if [ -n "${EUID:-}" ]; then
+        printf '%s\n' "${EUID}"
+    elif command -v id >/dev/null 2>&1; then
+        id -u
+    else
+        printf '1\n'
+    fi
+}
+
+configure_root_build_workaround() {
+    case "${OPENWRT_FORCE_UNSAFE_CONFIGURE}" in
+        auto)
+            if [ "$(current_uid)" = "0" ]; then
+                export FORCE_UNSAFE_CONFIGURE="${FORCE_UNSAFE_CONFIGURE:-1}"
+            fi
+            ;;
+        1|y|Y|yes|YES|true|TRUE|on|ON)
+            export FORCE_UNSAFE_CONFIGURE=1
+            ;;
+        0|n|N|no|NO|false|FALSE|off|OFF)
+            unset FORCE_UNSAFE_CONFIGURE
+            ;;
+        *)
+            export FORCE_UNSAFE_CONFIGURE="${OPENWRT_FORCE_UNSAFE_CONFIGURE}"
+            ;;
     esac
 }
 
@@ -636,6 +666,9 @@ build_openwrt() {
 
     cd "${OPENWRT_SOURCE_DIR}"
     [ -z "${OPENWRT_MAKE_VERBOSE}" ] || make_extra+=("V=${OPENWRT_MAKE_VERBOSE}")
+    if [ -n "${FORCE_UNSAFE_CONFIGURE:-}" ]; then
+        log "FORCE_UNSAFE_CONFIGURE=${FORCE_UNSAFE_CONFIGURE} for OpenWrt tool builds"
+    fi
 
     if is_yes "${OPENWRT_CONFIG_ONLY}"; then
         log "OPENWRT_CONFIG_ONLY=yes, stopping after defconfig"
@@ -691,6 +724,7 @@ print_plan() {
   kernel version:   ${OPENWRT_KERNEL_VERSION}
   kernel hash:      ${OPENWRT_KERNEL_HASH}
   kernel tree:      ${EFFECTIVE_KERNEL_TREE:-${OPENWRT_KERNEL_TREE:-download}}
+  root configure:   FORCE_UNSAFE_CONFIGURE=${FORCE_UNSAFE_CONFIGURE:-unset} (${OPENWRT_FORCE_UNSAFE_CONFIGURE})
   kmod strategy:    ${OPENWRT_KMOD_STRATEGY}
   build all kmods:  ${OPENWRT_BUILD_ALL_KMODS}
   packages:         ${#REQUIRED_PACKAGES[@]} required, ${#OPTIONAL_PACKAGES[@]} optional
@@ -753,11 +787,13 @@ OPENWRT_FEEDS_UPDATE="${OPENWRT_FEEDS_UPDATE:-yes}"
 OPENWRT_DOWNLOAD_FIRST="${OPENWRT_DOWNLOAD_FIRST:-yes}"
 OPENWRT_CONFIG_ONLY="${OPENWRT_CONFIG_ONLY:-no}"
 OPENWRT_STRICT_REQUIRED_PACKAGES="${OPENWRT_STRICT_REQUIRED_PACKAGES:-no}"
+OPENWRT_FORCE_UNSAFE_CONFIGURE="${OPENWRT_FORCE_UNSAFE_CONFIGURE:-auto}"
 OPENWRT_MAKE_TARGET="${OPENWRT_MAKE_TARGET:-world}"
 OPENWRT_MAKE_VERBOSE="${OPENWRT_MAKE_VERBOSE:-}"
 OPENWRT_ALLOW_KERNEL_MISMATCH="${OPENWRT_ALLOW_KERNEL_MISMATCH:-no}"
 OPENWRT_DTS_SOURCE_DIR="${OPENWRT_DTS_SOURCE_DIR:-${REPO_DIR}/userpatches/kernel/archive/rockchip64-${OPENWRT_KERNEL_PATCHVER}/dt}"
 DTS_SOURCE_DIR="${OPENWRT_DTS_SOURCE_DIR}"
+configure_root_build_workaround
 
 if command -v nproc >/dev/null 2>&1; then
     DEFAULT_OPENWRT_JOBS="$(nproc)"
