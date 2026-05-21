@@ -15,7 +15,8 @@ Important environment variables:
   OPENWRT_SOURCE_REF=auto              OpenWrt branch/tag to use, or auto
   OPENWRT_KERNEL_TREE=/path/to/tree    Optional external Linux 6.18 tree; use auto to search work/cache
   OPENWRT_KERNEL_VERSION=6.18          Exact kernel version label
-  OPENWRT_KERNEL_HASH=<sha256>         Optional kernel tarball hash
+  OPENWRT_KERNEL_HASH=<sha256|skip>    Kernel tarball hash; defaults to skip for bring-up
+  OPENWRT_REFRESH_GENERATED_CONFIGS=yes Refresh generated config-6.18 files on rerun
   OPENWRT_CONFIG_ONLY=yes              Stop after OpenWrt .config generation
   EASEPI_R2_DRY_RUN=yes                Print resolved plan without cloning/building
 USAGE
@@ -125,12 +126,21 @@ copy_closest_versioned_file() {
     local base src
 
     if [ -f "${dst}" ]; then
-        return 0
+        if is_yes "${OPENWRT_REFRESH_GENERATED_CONFIGS}" && ! openwrt_path_is_tracked "${dst}"; then
+            log "refresh generated $(basename "${dst}")"
+        else
+            return 0
+        fi
     fi
 
     base="$(dirname "${dst}")"
     mkdir -p "${base}"
-    src="$(find "${base}" -maxdepth 1 -type f -name "${pattern}" 2>/dev/null | sort -V | tail -n 1 || true)"
+    src="$(
+        find "${base}" -maxdepth 1 -type f -name "${pattern}" ! -name "$(basename "${dst}")" 2>/dev/null |
+            sort -V |
+            tail -n 1 ||
+            true
+    )"
 
     if [ -n "${src}" ]; then
         log "copy baseline $(basename "${src}") -> $(basename "${dst}")"
@@ -143,6 +153,15 @@ copy_closest_versioned_file() {
     fi
 
     : > "${dst}"
+}
+
+openwrt_path_is_tracked() {
+    local path="$1"
+    local rel
+
+    rel="${path#${OPENWRT_SOURCE_DIR}/}"
+    [ "${rel}" != "${path}" ] || return 1
+    git -C "${OPENWRT_SOURCE_DIR}" ls-files --error-unmatch -- "${rel}" >/dev/null 2>&1
 }
 
 release_ref_candidates() {
@@ -367,7 +386,7 @@ patch_kernel_line() {
 write_kernel_details() {
     local file="$1"
     local suffix="$2"
-    local hash="${OPENWRT_KERNEL_HASH:-x}"
+    local hash="${OPENWRT_KERNEL_HASH:-skip}"
 
     mkdir -p "$(dirname "${file}")"
     {
@@ -485,8 +504,8 @@ merge_kernel_fragment() {
     local generic_config="${OPENWRT_SOURCE_DIR}/target/linux/generic/config-${OPENWRT_KERNEL_PATCHVER}"
     local raw line
 
-    copy_closest_versioned_file "${target_config}" "config-*" yes
-    copy_closest_versioned_file "${generic_config}" "config-*" yes
+    copy_closest_versioned_file "${target_config}" "config-[0-9]*" yes
+    copy_closest_versioned_file "${generic_config}" "config-[0-9]*" yes
     mkdir -p \
         "${OPENWRT_SOURCE_DIR}/target/linux/generic/backport-${OPENWRT_KERNEL_PATCHVER}" \
         "${OPENWRT_SOURCE_DIR}/target/linux/generic/hack-${OPENWRT_KERNEL_PATCHVER}" \
@@ -510,6 +529,9 @@ emit_kernel_fragment_to_openwrt_config() {
             CONFIG_*=*)
                 key="${line%%=*}"
                 value="${line#*=}"
+                if [ "${value}" = "m" ]; then
+                    continue
+                fi
                 printf 'CONFIG_KERNEL_%s=%s\n' "${key#CONFIG_}" "${value}"
                 ;;
         esac
@@ -667,6 +689,7 @@ print_plan() {
   source dir:       ${OPENWRT_SOURCE_DIR}
   kernel patchver:  ${OPENWRT_KERNEL_PATCHVER}
   kernel version:   ${OPENWRT_KERNEL_VERSION}
+  kernel hash:      ${OPENWRT_KERNEL_HASH}
   kernel tree:      ${EFFECTIVE_KERNEL_TREE:-${OPENWRT_KERNEL_TREE:-download}}
   kmod strategy:    ${OPENWRT_KMOD_STRATEGY}
   build all kmods:  ${OPENWRT_BUILD_ALL_KMODS}
@@ -715,8 +738,9 @@ OPENWRT_SOURCE_DIR="${OPENWRT_SOURCE_DIR:-${OPENWRT_WORK_DIR}/openwrt-${RELEASE}
 OPENWRT_KERNEL_PATCHVER="${OPENWRT_KERNEL_PATCHVER:-${OPENWRT_KERNEL_SERIES:-6.18}}"
 OPENWRT_KERNEL_VERSION_USER_SET="${OPENWRT_KERNEL_VERSION+x}"
 OPENWRT_KERNEL_VERSION="${OPENWRT_KERNEL_VERSION:-${OPENWRT_KERNEL_PATCHVER}}"
-OPENWRT_KERNEL_HASH="${OPENWRT_KERNEL_HASH:-}"
+OPENWRT_KERNEL_HASH="${OPENWRT_KERNEL_HASH:-skip}"
 OPENWRT_KERNEL_TREE="${OPENWRT_KERNEL_TREE:-}"
+OPENWRT_REFRESH_GENERATED_CONFIGS="${OPENWRT_REFRESH_GENERATED_CONFIGS:-yes}"
 OPENWRT_KERNEL_LOCALVERSION="${OPENWRT_KERNEL_LOCALVERSION:-${OPENWRT_KERNEL_LOCALVERSION_DEFAULT:--easepi-r2}}"
 OPENWRT_UBOOT_DEVICE_NAME="${OPENWRT_UBOOT_DEVICE_NAME:-easepi-r2-rk3588}"
 OPENWRT_BUILD_UBOOT="${OPENWRT_BUILD_UBOOT:-yes}"

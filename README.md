@@ -362,7 +362,7 @@ cd ~/rk3588_build/EasePi-R2-Image-Build
 
 #### OpenWrt 24 / 25 魔改 6.18 镜像
 
-OpenWrt 路线使用 `rk3588-max` profile：6.18 自定义内核、GPU/NPU/VPU/KVM/LXC/Docker/VPN/4G/蓝牙/无线/红外线方向的内核片段，以及“构建完整本地 kmod feed + 预装最大精选 kmod”的策略。默认不要求本地魔改内核树，会先让 OpenWrt 下载 upstream `linux-6.18.tar.xz`；后续有 RK3588 vendor/self-maintained `linux-6.18.x` 树时，再通过 `OPENWRT_KERNEL_TREE=/path/to/linux-6.18.x` 接入。详细清单见 `rootfs/openwrt/`。
+OpenWrt 路线使用 `rk3588-max` profile：6.18 自定义内核、GPU/NPU/VPU/KVM/LXC/Docker/VPN/4G/蓝牙/无线/红外线方向的内核片段，以及“构建完整本地 kmod feed + 预装最大精选 kmod”的策略。默认不要求本地魔改内核树，会先让 OpenWrt 下载 upstream `linux-6.18.tar.xz`，首轮 bring-up 使用 `OPENWRT_KERNEL_HASH=skip`；后续有 RK3588 vendor/self-maintained `linux-6.18.x` 树时，再通过 `OPENWRT_KERNEL_TREE=/path/to/linux-6.18.x` 接入。详细清单见 `rootfs/openwrt/`。
 
 <a id="cmd-openwrt-25-618"></a>
 

@@ -12,12 +12,13 @@
 !busybox
 !dropbear
 !firewall4
-!nftables
+?nftables
 !dnsmasq-full
 !odhcpd-ipv6only
 !luci
 !luci-ssl
-!luci-app-opkg
+?luci-app-package-manager
+?luci-app-opkg
 !luci-app-firewall
 !ca-bundle
 !curl
@@ -32,7 +33,7 @@
 # Core network and router kmods
 !kmod-tun
 !kmod-veth
-!kmod-bridge
+?kmod-bridge
 ?kmod-br-netfilter
 ?kmod-8021q
 ?kmod-macvlan

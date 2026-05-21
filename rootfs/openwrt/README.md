@@ -48,12 +48,22 @@ bash build-image.sh openwrt 25 6.18 ext4
 Set `OPENWRT_KERNEL_TREE=auto` only when you want the adapter to search this
 repo's work/cache directories for an existing tree.
 
-The default `OPENWRT_KERNEL_HASH=x` style is accepted by OpenWrt for unknown
-kernel versions during bring-up. For reproducible builds, pass the exact kernel
-tarball version and hash:
+The adapter defaults `OPENWRT_KERNEL_HASH=skip` for 6.18 bring-up so OpenWrt can
+download a kernel tarball before the final hash is pinned. For reproducible
+builds, pass the exact kernel tarball version and hash:
 
 ```bash
-OPENWRT_KERNEL_VERSION=6.18.1 \
+OPENWRT_KERNEL_VERSION=6.18 \
+OPENWRT_KERNEL_HASH=9106a4605da9e31ff17659d958782b815f9591ab308d03b0ee21aad6c7dced4b \
+OPENWRT_PROFILE=rk3588-max \
+OPENWRT_KMOD_STRATEGY=build-all-preinstall-max \
+bash build-image.sh openwrt 25 6.18 ext4
+```
+
+For a newer stable kernel tarball, override both values:
+
+```bash
+OPENWRT_KERNEL_VERSION=6.18.32 \
 OPENWRT_KERNEL_HASH=<sha256> \
 OPENWRT_PROFILE=rk3588-max \
 OPENWRT_KMOD_STRATEGY=build-all-preinstall-max \
